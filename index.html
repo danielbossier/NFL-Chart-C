@@ -344,6 +344,31 @@ header span { font-size: 0.8rem; color: #8b949e; }
 }
 .btn-copy:hover, .btn-dl:hover { background: #30363d; }
 
+/* sport toggle */
+.sport-toggle {
+  display: flex;
+  gap: 2px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 2px;
+  margin-left: auto;
+}
+.btn-toggle {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #8b949e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.04em;
+}
+.btn-toggle.active { background: #30363d; color: #e6edf3; }
+.btn-toggle:hover:not(.active) { color: #e6edf3; }
+
 /* drag ghost */
 .ghost {
   position: fixed;
@@ -363,8 +388,12 @@ header span { font-size: 0.8rem; color: #8b949e; }
 <body>
 
 <header>
-  <h1>NFL Team Ranker</h1>
+  <h1 id="app-title">NFL Team Ranker</h1>
   <span>Drag teams onto the chart &nbsp;·&nbsp; Drag off the chart to remove</span>
+  <div class="sport-toggle">
+    <button class="btn-toggle active" data-sport="nfl">NFL</button>
+    <button class="btn-toggle" data-sport="mlb">MLB</button>
+  </div>
 </header>
 
 <div class="layout">
@@ -417,51 +446,106 @@ header span { font-size: 0.8rem; color: #8b949e; }
 <script>
 const MIN = -10; const MAX = 10; const RANGE = 20;
 
-const teams = {
-  buf:  { name: 'Bills',       bg: '#00338D', fg: '#C60C30' },
-  mia:  { name: 'Dolphins',    bg: '#008E97', fg: '#fff' },
-  ne:   { name: 'Patriots',    bg: '#002244', fg: '#C60C30' },
-  nyj:  { name: 'Jets',        bg: '#125740', fg: '#fff' },
-  bal:  { name: 'Ravens',      bg: '#241773', fg: '#9E7C0C' },
-  cin:  { name: 'Bengals',     bg: '#FB4F14', fg: '#000' },
-  cle:  { name: 'Browns',      bg: '#311D00', fg: '#FF3C00' },
-  pit:  { name: 'Steelers',    bg: '#101820', fg: '#FFB612' },
-  hou:  { name: 'Texans',      bg: '#03202F', fg: '#A71930' },
-  ind:  { name: 'Colts',       bg: '#002C5F', fg: '#A2AAAD' },
-  jax:  { name: 'Jaguars',     bg: '#101820', fg: '#9F792C' },
-  ten:  { name: 'Titans',      bg: '#0C2340', fg: '#4B92DB' },
-  den:  { name: 'Broncos',     bg: '#FB4F14', fg: '#002244' },
-  kc:   { name: 'Chiefs',      bg: '#E31837', fg: '#FFB81C' },
-  lv:   { name: 'Raiders',     bg: '#2B2B2B', fg: '#A5ACAF' },
-  lac:  { name: 'Chargers',    bg: '#0080C6', fg: '#FFC20E' },
-  dal:  { name: 'Cowboys',     bg: '#003594', fg: '#869397' },
-  nyg:  { name: 'Giants',      bg: '#0B2265', fg: '#A71930' },
-  phi:  { name: 'Eagles',      bg: '#004C54', fg: '#A5ACAF' },
-  was:  { name: 'Commanders',  bg: '#5A1414', fg: '#FFB612' },
-  chi:  { name: 'Bears',       bg: '#0B162A', fg: '#C83803' },
-  det:  { name: 'Lions',       bg: '#0076B6', fg: '#B0B7BC' },
-  gb:   { name: 'Packers',     bg: '#203731', fg: '#FFB612' },
-  min:  { name: 'Vikings',     bg: '#4F2683', fg: '#FFC62F' },
-  atl:  { name: 'Falcons',     bg: '#A71930', fg: '#fff' },
-  car:  { name: 'Panthers',    bg: '#0085CA', fg: '#101820' },
-  no:   { name: 'Saints',      bg: '#101820', fg: '#D3BC8D' },
-  tb:   { name: 'Buccaneers',  bg: '#D50A0A', fg: '#FF7900' },
-  ari:  { name: 'Cardinals',   bg: '#97233F', fg: '#FFB612' },
-  lar:  { name: 'Rams',        bg: '#003594', fg: '#FFA300' },
-  sf:   { name: '49ers',       bg: '#AA0000', fg: '#B3995D' },
-  sea:  { name: 'Seahawks',    bg: '#002244', fg: '#69BE28' },
+const sports = {
+  nfl: {
+    label: 'NFL',
+    total: 32,
+    conferences: ['AFC', 'NFC'],
+    divsPerConf: 4,
+    teams: {
+      buf:  { name: 'Bills',       bg: '#00338D', fg: '#C60C30' },
+      mia:  { name: 'Dolphins',    bg: '#008E97', fg: '#fff' },
+      ne:   { name: 'Patriots',    bg: '#002244', fg: '#C60C30' },
+      nyj:  { name: 'Jets',        bg: '#125740', fg: '#fff' },
+      bal:  { name: 'Ravens',      bg: '#241773', fg: '#9E7C0C' },
+      cin:  { name: 'Bengals',     bg: '#FB4F14', fg: '#000' },
+      cle:  { name: 'Browns',      bg: '#311D00', fg: '#FF3C00' },
+      pit:  { name: 'Steelers',    bg: '#101820', fg: '#FFB612' },
+      hou:  { name: 'Texans',      bg: '#03202F', fg: '#A71930' },
+      ind:  { name: 'Colts',       bg: '#002C5F', fg: '#A2AAAD' },
+      jax:  { name: 'Jaguars',     bg: '#101820', fg: '#9F792C' },
+      ten:  { name: 'Titans',      bg: '#0C2340', fg: '#4B92DB' },
+      den:  { name: 'Broncos',     bg: '#FB4F14', fg: '#002244' },
+      kc:   { name: 'Chiefs',      bg: '#E31837', fg: '#FFB81C' },
+      lv:   { name: 'Raiders',     bg: '#2B2B2B', fg: '#A5ACAF' },
+      lac:  { name: 'Chargers',    bg: '#0080C6', fg: '#FFC20E' },
+      dal:  { name: 'Cowboys',     bg: '#003594', fg: '#869397' },
+      nyg:  { name: 'Giants',      bg: '#0B2265', fg: '#A71930' },
+      phi:  { name: 'Eagles',      bg: '#004C54', fg: '#A5ACAF' },
+      was:  { name: 'Commanders',  bg: '#5A1414', fg: '#FFB612' },
+      chi:  { name: 'Bears',       bg: '#0B162A', fg: '#C83803' },
+      det:  { name: 'Lions',       bg: '#0076B6', fg: '#B0B7BC' },
+      gb:   { name: 'Packers',     bg: '#203731', fg: '#FFB612' },
+      min:  { name: 'Vikings',     bg: '#4F2683', fg: '#FFC62F' },
+      atl:  { name: 'Falcons',     bg: '#A71930', fg: '#fff' },
+      car:  { name: 'Panthers',    bg: '#0085CA', fg: '#101820' },
+      no:   { name: 'Saints',      bg: '#101820', fg: '#D3BC8D' },
+      tb:   { name: 'Buccaneers',  bg: '#D50A0A', fg: '#FF7900' },
+      ari:  { name: 'Cardinals',   bg: '#97233F', fg: '#FFB612' },
+      lar:  { name: 'Rams',        bg: '#003594', fg: '#FFA300' },
+      sf:   { name: '49ers',       bg: '#AA0000', fg: '#B3995D' },
+      sea:  { name: 'Seahawks',    bg: '#002244', fg: '#69BE28' },
+    },
+    divisions: [
+      { label: 'AFC East',  ids: ['buf','mia','ne','nyj'] },
+      { label: 'AFC North', ids: ['bal','cin','cle','pit'] },
+      { label: 'AFC South', ids: ['hou','ind','jax','ten'] },
+      { label: 'AFC West',  ids: ['den','kc','lv','lac'] },
+      { label: 'NFC East',  ids: ['dal','nyg','phi','was'] },
+      { label: 'NFC North', ids: ['chi','det','gb','min'] },
+      { label: 'NFC South', ids: ['atl','car','no','tb'] },
+      { label: 'NFC West',  ids: ['ari','lar','sf','sea'] },
+    ],
+  },
+  mlb: {
+    label: 'MLB',
+    total: 30,
+    conferences: ['AL', 'NL'],
+    divsPerConf: 3,
+    teams: {
+      bal:  { name: 'Orioles',     bg: '#DF4601', fg: '#000' },
+      bos:  { name: 'Red Sox',     bg: '#BD3039', fg: '#fff' },
+      nyy:  { name: 'Yankees',     bg: '#003087', fg: '#fff' },
+      tb:   { name: 'Rays',        bg: '#092C5C', fg: '#8FBCE6' },
+      tor:  { name: 'Blue Jays',   bg: '#134A8E', fg: '#fff' },
+      chw:  { name: 'White Sox',   bg: '#27251F', fg: '#C4CED4' },
+      cle:  { name: 'Guardians',   bg: '#00385D', fg: '#E31937' },
+      det:  { name: 'Tigers',      bg: '#0C2340', fg: '#FA4616' },
+      kc:   { name: 'Royals',      bg: '#004687', fg: '#C09A5B' },
+      min:  { name: 'Twins',       bg: '#002B5C', fg: '#D31145' },
+      hou:  { name: 'Astros',      bg: '#002D62', fg: '#EB6E1F' },
+      laa:  { name: 'Angels',      bg: '#BA0021', fg: '#fff' },
+      oak:  { name: 'Athletics',   bg: '#003831', fg: '#EFB21E' },
+      sea:  { name: 'Mariners',    bg: '#0C2C56', fg: '#C4CED4' },
+      tex:  { name: 'Rangers',     bg: '#003278', fg: '#C0111F' },
+      atl:  { name: 'Braves',      bg: '#CE1141', fg: '#13274F' },
+      mia:  { name: 'Marlins',     bg: '#00A3E0', fg: '#101820' },
+      nym:  { name: 'Mets',        bg: '#002D72', fg: '#FF5910' },
+      phi:  { name: 'Phillies',    bg: '#E81828', fg: '#fff' },
+      was:  { name: 'Nationals',   bg: '#AB0003', fg: '#fff' },
+      chc:  { name: 'Cubs',        bg: '#0E3386', fg: '#CC3433' },
+      cin:  { name: 'Reds',        bg: '#C6011F', fg: '#fff' },
+      mil:  { name: 'Brewers',     bg: '#12284B', fg: '#FFC52F' },
+      pit:  { name: 'Pirates',     bg: '#27251F', fg: '#FDB827' },
+      stl:  { name: 'Cardinals',   bg: '#C41E3A', fg: '#fff' },
+      ari:  { name: 'D-backs',     bg: '#A71930', fg: '#E3D4AD' },
+      col:  { name: 'Rockies',     bg: '#33006F', fg: '#C4CED4' },
+      lad:  { name: 'Dodgers',     bg: '#005A9C', fg: '#fff' },
+      sd:   { name: 'Padres',      bg: '#2F241D', fg: '#FFC425' },
+      sf:   { name: 'Giants',      bg: '#27251F', fg: '#FD5A1E' },
+    },
+    divisions: [
+      { label: 'AL East',    ids: ['bal','bos','nyy','tb','tor'] },
+      { label: 'AL Central', ids: ['chw','cle','det','kc','min'] },
+      { label: 'AL West',    ids: ['hou','laa','oak','sea','tex'] },
+      { label: 'NL East',    ids: ['atl','mia','nym','phi','was'] },
+      { label: 'NL Central', ids: ['chc','cin','mil','pit','stl'] },
+      { label: 'NL West',    ids: ['ari','col','lad','sd','sf'] },
+    ],
+  },
 };
 
-const divisions = [
-  { label: 'AFC East',  ids: ['buf','mia','ne','nyj'] },
-  { label: 'AFC North', ids: ['bal','cin','cle','pit'] },
-  { label: 'AFC South', ids: ['hou','ind','jax','ten'] },
-  { label: 'AFC West',  ids: ['den','kc','lv','lac'] },
-  { label: 'NFC East',  ids: ['dal','nyg','phi','was'] },
-  { label: 'NFC North', ids: ['chi','det','gb','min'] },
-  { label: 'NFC South', ids: ['atl','car','no','tb'] },
-  { label: 'NFC West',  ids: ['ari','lar','sf','sea'] },
-];
+let currentSport = 'nfl';
 
 // placed[teamId] = { x: -10–10, y: -10–10 }
 const placed = {};
@@ -521,11 +605,14 @@ function initChart() {
 // ---- Render tray ----
 function renderTray() {
   trayEl.innerHTML = '';
+  const sport = sports[currentSport];
   const count = Object.keys(placed).length;
-  document.getElementById('tray-count').textContent = count + ' / 32 placed';
-  document.getElementById('btn-save').disabled = count < 32;
+  document.getElementById('tray-count').textContent = count + ' / ' + sport.total + ' placed';
+  document.getElementById('btn-save').disabled = count < sport.total;
 
-  [['AFC', divisions.slice(0, 4)], ['NFC', divisions.slice(4)]].forEach(([conf, confDivs]) => {
+  const [conf1, conf2] = sport.conferences;
+  const n = sport.divsPerConf;
+  [[conf1, sport.divisions.slice(0, n)], [conf2, sport.divisions.slice(n)]].forEach(([conf, confDivs]) => {
     const col = document.createElement('div');
     col.className = 'conf-col';
 
@@ -539,14 +626,14 @@ function renderTray() {
       group.className = 'div-group';
 
       const h4 = document.createElement('h4');
-      h4.textContent = div.label.replace(/^[AN]FC /, '');
+      h4.textContent = div.label.replace(/^\S+ /, '');
       group.appendChild(h4);
 
       const wrap = document.createElement('div');
       wrap.className = 'div-chips';
 
-      [...div.ids].sort((a, b) => teams[a].name.localeCompare(teams[b].name)).forEach(id => {
-        const t = teams[id];
+      [...div.ids].sort((a, b) => sport.teams[a].name.localeCompare(sport.teams[b].name)).forEach(id => {
+        const t = sport.teams[id];
         const chip = document.createElement('div');
         chip.className = 'tray-chip' + (placed[id] ? ' on-chart' : '');
         chip.textContent = t.name;
@@ -570,8 +657,9 @@ function renderTray() {
 function renderChips() {
   chartEl.querySelectorAll('.chip').forEach(el => el.remove());
 
+  const sport = sports[currentSport];
   Object.entries(placed).forEach(([id, pos]) => {
-    const t = teams[id];
+    const t = sport.teams[id];
     const chip = document.createElement('div');
     chip.className = 'chip';
     chip.style.background = t.bg;
@@ -600,7 +688,7 @@ function beginDrag(e, id) {
   e.preventDefault();
   e.stopPropagation();
 
-  const t = teams[id];
+  const t = sports[currentSport].teams[id];
 
   const ghost = document.createElement('div');
   ghost.className = 'ghost';
@@ -667,11 +755,13 @@ function buildCSV(rows) {
 
 function openModal() {
   // Sort by goodness desc, then likeability desc
+  const sport = sports[currentSport];
+  document.querySelector('.modal-header h2').textContent = sport.label + ' Team Rankings';
   const rows = Object.entries(placed).map(([id, pos]) => ({
     id,
-    name: teams[id].name,
-    bg: teams[id].bg,
-    fg: teams[id].fg,
+    name: sport.teams[id].name,
+    bg: sport.teams[id].bg,
+    fg: sport.teams[id].fg,
     x: pos.x,
     y: pos.y,
     _x: pos.x,
@@ -719,6 +809,23 @@ document.getElementById('modal-bg').addEventListener('click', e => {
     document.getElementById('modal-bg').classList.add('hidden');
 });
 
+
+// ---- Sport toggle ----
+function setSport(key) {
+  if (key === currentSport) return;
+  currentSport = key;
+  Object.keys(placed).forEach(k => delete placed[k]);
+  document.querySelectorAll('.btn-toggle').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.sport === key);
+  });
+  document.getElementById('app-title').textContent = sports[key].label + ' Team Ranker';
+  renderTray();
+  renderChips();
+}
+
+document.querySelectorAll('.btn-toggle').forEach(btn => {
+  btn.addEventListener('click', () => setSport(btn.dataset.sport));
+});
 
 // ---- Init ----
 initChart();
