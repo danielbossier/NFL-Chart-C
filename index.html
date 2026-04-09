@@ -165,7 +165,7 @@ header span { font-size: 0.8rem; color: #8b949e; }
 
 /* ---- Tray side ---- */
 .tray-side {
-  flex: 0 0 220px;
+  flex: 0 0 430px;
   border-left: 1px solid #30363d;
   display: flex;
   flex-direction: column;
@@ -185,9 +185,23 @@ header span { font-size: 0.8rem; color: #8b949e; }
   flex: 1;
   overflow-y: auto;
   padding: 10px 12px;
+  display: flex;
+  gap: 12px;
 }
 .tray-scroll::-webkit-scrollbar { width: 4px; }
 .tray-scroll::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+.conf-col { flex: 1; min-width: 0; }
+.conf-head {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #e6edf3;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #30363d;
+}
 
 .div-group { margin-bottom: 13px; }
 .div-group h4 {
@@ -511,32 +525,44 @@ function renderTray() {
   document.getElementById('tray-count').textContent = count + ' / 32 placed';
   document.getElementById('btn-save').disabled = count < 32;
 
-  divisions.forEach(div => {
-    const group = document.createElement('div');
-    group.className = 'div-group';
+  [['AFC', divisions.slice(0, 4)], ['NFC', divisions.slice(4)]].forEach(([conf, confDivs]) => {
+    const col = document.createElement('div');
+    col.className = 'conf-col';
 
-    const h4 = document.createElement('h4');
-    h4.textContent = div.label;
-    group.appendChild(h4);
+    const head = document.createElement('div');
+    head.className = 'conf-head';
+    head.textContent = conf;
+    col.appendChild(head);
 
-    const wrap = document.createElement('div');
-    wrap.className = 'div-chips';
+    confDivs.forEach(div => {
+      const group = document.createElement('div');
+      group.className = 'div-group';
 
-    [...div.ids].sort((a, b) => teams[a].name.localeCompare(teams[b].name)).forEach(id => {
-      const t = teams[id];
-      const chip = document.createElement('div');
-      chip.className = 'tray-chip' + (placed[id] ? ' on-chart' : '');
-      chip.textContent = t.name;
-      chip.style.background = t.bg;
-      chip.style.color = t.fg;
-      if (!placed[id]) {
-        chip.addEventListener('mousedown', e => beginDrag(e, id));
-      }
-      wrap.appendChild(chip);
+      const h4 = document.createElement('h4');
+      h4.textContent = div.label.replace(/^[AN]FC /, '');
+      group.appendChild(h4);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'div-chips';
+
+      [...div.ids].sort((a, b) => teams[a].name.localeCompare(teams[b].name)).forEach(id => {
+        const t = teams[id];
+        const chip = document.createElement('div');
+        chip.className = 'tray-chip' + (placed[id] ? ' on-chart' : '');
+        chip.textContent = t.name;
+        chip.style.background = t.bg;
+        chip.style.color = t.fg;
+        if (!placed[id]) {
+          chip.addEventListener('mousedown', e => beginDrag(e, id));
+        }
+        wrap.appendChild(chip);
+      });
+
+      group.appendChild(wrap);
+      col.appendChild(group);
     });
 
-    group.appendChild(wrap);
-    trayEl.appendChild(group);
+    trayEl.appendChild(col);
   });
 }
 
