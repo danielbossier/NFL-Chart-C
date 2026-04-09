@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NFL Team Ranker</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+header {
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  padding: 10px 20px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-shrink: 0;
+}
+header h1 { font-size: 1.1rem; font-weight: 700; }
+header span { font-size: 0.8rem; color: #8b949e; }
+
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ---- Chart side ---- */
+.chart-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px 52px 64px;
+  min-width: 0;
+}
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  max-width: calc(100vh - 120px);
+  aspect-ratio: 1;
+}
+
+#chart {
+  width: 100%;
+  height: 100%;
+  background: #0d1f2d;
+  border: 1px solid #30363d;
+  position: relative;
+  cursor: crosshair;
+}
+
+/* gridlines */
+.gl {
+  position: absolute;
+  background: rgba(255,255,255,0.06);
+  pointer-events: none;
+}
+.gl.v { width: 1px; top: 0; bottom: 0; }
+.gl.h { height: 1px; left: 0; right: 0; }
+.gl.center { background: rgba(255,255,255,0.14); }
+
+/* quadrant labels */
+.qlabel {
+  position: absolute;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.09);
+  pointer-events: none;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  line-height: 1.5;
+}
+
+/* team chips on chart */
+.chip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 3px 8px 2px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: grab;
+  white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.18);
+  z-index: 5;
+  transition: box-shadow 0.1s, border-color 0.1s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.chip:hover {
+  z-index: 20;
+  border-color: rgba(255,255,255,0.6);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+}
+.chip-coords {
+  font-size: 0.55rem;
+  font-weight: 400;
+  opacity: 0.75;
+  letter-spacing: 0.03em;
+}
+
+/* axis tick labels */
+.xtick {
+  position: absolute;
+  bottom: -20px;
+  font-size: 0.62rem;
+  color: #8b949e;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.ytick {
+  position: absolute;
+  right: calc(100% + 6px);
+  font-size: 0.62rem;
+  color: #8b949e;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* axis labels */
+.xlabel {
+  position: absolute;
+  bottom: -44px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.ylabel {
+  position: absolute;
+  left: -52px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  font-size: 0.72rem;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+/* drop highlight */
+#chart.drag-over {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 1px #58a6ff;
+}
+
+/* ---- Tray side ---- */
+.tray-side {
+  flex: 0 0 220px;
+  border-left: 1px solid #30363d;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tray-head {
+  padding: 10px 14px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  flex-shrink: 0;
+}
+.tray-head strong { display: block; font-size: 0.82rem; }
+.tray-count { color: #8b949e; font-size: 0.72rem; margin-top: 1px; }
+
+.tray-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+.tray-scroll::-webkit-scrollbar { width: 4px; }
+.tray-scroll::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+.div-group { margin-bottom: 13px; }
+.div-group h4 {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #8b949e;
+  margin-bottom: 5px;
+}
+.div-chips { display: flex; flex-direction: column; gap: 3px; }
+
+.tray-chip {
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: grab;
+  border: 1px solid rgba(255,255,255,0.15);
+  transition: opacity 0.2s, border-color 0.1s;
+  white-space: nowrap;
+}
+.tray-chip:hover { border-color: rgba(255,255,255,0.45); }
+.tray-chip.on-chart {
+  opacity: 0.22;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* save footer */
+.save-footer {
+  padding: 10px 14px;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+  flex-shrink: 0;
+}
+.btn-save {
+  width: 100%;
+  padding: 7px 0;
+  border-radius: 5px;
+  border: 1px solid #238636;
+  background: #238636;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-save:hover:not(:disabled) { background: #2ea043; border-color: #2ea043; }
+.btn-save:disabled {
+  background: #21262d;
+  border-color: #30363d;
+  color: #484f58;
+  cursor: not-allowed;
+}
+
+/* modal */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal-bg.hidden { display: none; }
+.modal {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-header h2 { font-size: 0.95rem; font-weight: 700; }
+.modal-close {
+  background: none; border: none; color: #8b949e;
+  font-size: 1.1rem; cursor: pointer; padding: 0 4px;
+  line-height: 1;
+}
+.modal-close:hover { color: #e6edf3; }
+.modal-body {
+  overflow-y: auto;
+  padding: 14px 18px;
+  flex: 1;
+}
+.modal-body::-webkit-scrollbar { width: 4px; }
+.modal-body::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+.modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.modal-table th {
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid #30363d;
+  color: #8b949e;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.07em;
+}
+.modal-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #21262d;
+}
+.modal-table tr:last-child td { border-bottom: none; }
+.team-swatch {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.modal-footer {
+  padding: 12px 18px;
+  border-top: 1px solid #30363d;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.btn-copy, .btn-dl {
+  padding: 6px 14px;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #e6edf3;
+  transition: background 0.15s;
+}
+.btn-copy:hover, .btn-dl:hover { background: #30363d; }
+
+/* drag ghost */
+.ghost {
+  position: fixed;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.4);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NFL Team Ranker</h1>
+  <span>Drag teams onto the chart &nbsp;·&nbsp; Drag off the chart to remove</span>
+</header>
+
+<div class="layout">
+  <div class="chart-side">
+    <div class="chart-wrap">
+      <div id="chart"></div>
+      <div class="xlabel">Goodness &rarr;</div>
+      <div class="ylabel">Likeability &uarr;</div>
+    </div>
+  </div>
+
+  <div class="tray-side">
+    <div class="tray-head">
+      <strong>Teams</strong>
+      <div class="tray-count" id="tray-count">0 / 32 placed</div>
+    </div>
+    <div class="tray-scroll" id="tray"></div>
+    <div class="save-footer">
+      <button class="btn-save" id="btn-save" disabled>Save Rankings</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="modal-bg">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>NFL Team Rankings</h2>
+      <button class="modal-close" id="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <table class="modal-table" id="modal-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Team</th>
+            <th>Goodness</th>
+            <th>Likeability</th>
+          </tr>
+        </thead>
+        <tbody id="modal-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-copy" id="btn-copy">Copy CSV</button>
+      <button class="btn-dl" id="btn-dl">Download CSV</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MIN = -10; const MAX = 10; const RANGE = 20;
+
+const teams = {
+  buf:  { name: 'Bills',       bg: '#00338D', fg: '#C60C30' },
+  mia:  { name: 'Dolphins',    bg: '#008E97', fg: '#fff' },
+  ne:   { name: 'Patriots',    bg: '#002244', fg: '#C60C30' },
+  nyj:  { name: 'Jets',        bg: '#125740', fg: '#fff' },
+  bal:  { name: 'Ravens',      bg: '#241773', fg: '#9E7C0C' },
+  cin:  { name: 'Bengals',     bg: '#FB4F14', fg: '#000' },
+  cle:  { name: 'Browns',      bg: '#311D00', fg: '#FF3C00' },
+  pit:  { name: 'Steelers',    bg: '#101820', fg: '#FFB612' },
+  hou:  { name: 'Texans',      bg: '#03202F', fg: '#A71930' },
+  ind:  { name: 'Colts',       bg: '#002C5F', fg: '#A2AAAD' },
+  jax:  { name: 'Jaguars',     bg: '#101820', fg: '#9F792C' },
+  ten:  { name: 'Titans',      bg: '#0C2340', fg: '#4B92DB' },
+  den:  { name: 'Broncos',     bg: '#FB4F14', fg: '#002244' },
+  kc:   { name: 'Chiefs',      bg: '#E31837', fg: '#FFB81C' },
+  lv:   { name: 'Raiders',     bg: '#2B2B2B', fg: '#A5ACAF' },
+  lac:  { name: 'Chargers',    bg: '#0080C6', fg: '#FFC20E' },
+  dal:  { name: 'Cowboys',     bg: '#003594', fg: '#869397' },
+  nyg:  { name: 'Giants',      bg: '#0B2265', fg: '#A71930' },
+  phi:  { name: 'Eagles',      bg: '#004C54', fg: '#A5ACAF' },
+  was:  { name: 'Commanders',  bg: '#5A1414', fg: '#FFB612' },
+  chi:  { name: 'Bears',       bg: '#0B162A', fg: '#C83803' },
+  det:  { name: 'Lions',       bg: '#0076B6', fg: '#B0B7BC' },
+  gb:   { name: 'Packers',     bg: '#203731', fg: '#FFB612' },
+  min:  { name: 'Vikings',     bg: '#4F2683', fg: '#FFC62F' },
+  atl:  { name: 'Falcons',     bg: '#A71930', fg: '#fff' },
+  car:  { name: 'Panthers',    bg: '#0085CA', fg: '#101820' },
+  no:   { name: 'Saints',      bg: '#101820', fg: '#D3BC8D' },
+  tb:   { name: 'Buccaneers',  bg: '#D50A0A', fg: '#FF7900' },
+  ari:  { name: 'Cardinals',   bg: '#97233F', fg: '#FFB612' },
+  lar:  { name: 'Rams',        bg: '#003594', fg: '#FFA300' },
+  sf:   { name: '49ers',       bg: '#AA0000', fg: '#B3995D' },
+  sea:  { name: 'Seahawks',    bg: '#002244', fg: '#69BE28' },
+};
+
+const divisions = [
+  { label: 'AFC East',  ids: ['buf','mia','ne','nyj'] },
+  { label: 'AFC North', ids: ['bal','cin','cle','pit'] },
+  { label: 'AFC South', ids: ['hou','ind','jax','ten'] },
+  { label: 'AFC West',  ids: ['den','kc','lv','lac'] },
+  { label: 'NFC East',  ids: ['dal','nyg','phi','was'] },
+  { label: 'NFC North', ids: ['chi','det','gb','min'] },
+  { label: 'NFC South', ids: ['atl','car','no','tb'] },
+  { label: 'NFC West',  ids: ['ari','lar','sf','sea'] },
+];
+
+// placed[teamId] = { x: -10–10, y: -10–10 }
+const placed = {};
+
+const chartEl = document.getElementById('chart');
+const trayEl  = document.getElementById('tray');
+
+// ---- Build static chart decorations ----
+function initChart() {
+  // Gridlines at -5, 0, 5
+  [-5, 0, 5].forEach(v => {
+    const vl = document.createElement('div');
+    vl.className = 'gl v' + (v === 0 ? ' center' : '');
+    vl.style.left = ((v - MIN) / RANGE * 100) + '%';
+    chartEl.appendChild(vl);
+
+    const hl = document.createElement('div');
+    hl.className = 'gl h' + (v === 0 ? ' center' : '');
+    hl.style.top = ((1 - (v - MIN) / RANGE) * 100) + '%';
+    chartEl.appendChild(hl);
+  });
+
+  // Quadrant labels
+  [
+    { cx: 75, cy: 75, text: 'Good\n& Likeable' },
+    { cx: 25, cy: 75, text: 'Bad\n& Likeable' },
+    { cx: 75, cy: 25, text: 'Good\n& Unlikeable' },
+    { cx: 25, cy: 25, text: 'Bad\n& Unlikeable' },
+  ].forEach(q => {
+    const el = document.createElement('div');
+    el.className = 'qlabel';
+    el.style.left = q.cx + '%';
+    el.style.top  = (100 - q.cy) + '%';
+    el.textContent = q.text;
+    chartEl.appendChild(el);
+  });
+
+  // X tick labels (-10, -5, 0, 5, 10)
+  [-10, -5, 0, 5, 10].forEach(v => {
+    const t = document.createElement('div');
+    t.className = 'xtick';
+    t.textContent = v;
+    t.style.left = ((v - MIN) / RANGE * 100) + '%';
+    chartEl.appendChild(t);
+  });
+
+  // Y tick labels
+  [-10, -5, 0, 5, 10].forEach(v => {
+    const t = document.createElement('div');
+    t.className = 'ytick';
+    t.textContent = v;
+    t.style.top = ((1 - (v - MIN) / RANGE) * 100) + '%';
+    chartEl.appendChild(t);
+  });
+}
+
+// ---- Render tray ----
+function renderTray() {
+  trayEl.innerHTML = '';
+  const count = Object.keys(placed).length;
+  document.getElementById('tray-count').textContent = count + ' / 32 placed';
+  document.getElementById('btn-save').disabled = count < 32;
+
+  divisions.forEach(div => {
+    const group = document.createElement('div');
+    group.className = 'div-group';
+
+    const h4 = document.createElement('h4');
+    h4.textContent = div.label;
+    group.appendChild(h4);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'div-chips';
+
+    [...div.ids].sort((a, b) => teams[a].name.localeCompare(teams[b].name)).forEach(id => {
+      const t = teams[id];
+      const chip = document.createElement('div');
+      chip.className = 'tray-chip' + (placed[id] ? ' on-chart' : '');
+      chip.textContent = t.name;
+      chip.style.background = t.bg;
+      chip.style.color = t.fg;
+      if (!placed[id]) {
+        chip.addEventListener('mousedown', e => beginDrag(e, id));
+      }
+      wrap.appendChild(chip);
+    });
+
+    group.appendChild(wrap);
+    trayEl.appendChild(group);
+  });
+}
+
+// ---- Render chart chips ----
+function renderChips() {
+  chartEl.querySelectorAll('.chip').forEach(el => el.remove());
+
+  Object.entries(placed).forEach(([id, pos]) => {
+    const t = teams[id];
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.style.background = t.bg;
+    chip.style.color = t.fg;
+    chip.style.left = ((pos.x - MIN) / RANGE * 100) + '%';
+    chip.style.top  = ((1 - (pos.y - MIN) / RANGE) * 100) + '%';
+
+    const nameEl = document.createElement('span');
+    nameEl.textContent = t.name;
+    chip.appendChild(nameEl);
+
+    const coordEl = document.createElement('span');
+    coordEl.className = 'chip-coords';
+    coordEl.textContent = `G:${pos.x}  L:${pos.y}`;
+    chip.appendChild(coordEl);
+
+    chip.addEventListener('mousedown', e => beginDrag(e, id));
+    chartEl.appendChild(chip);
+  });
+}
+
+// ---- Drag ----
+let drag = null;
+
+function beginDrag(e, id) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const t = teams[id];
+
+  const ghost = document.createElement('div');
+  ghost.className = 'ghost';
+  ghost.textContent = t.name;
+  ghost.style.background = t.bg;
+  ghost.style.color = t.fg;
+  ghost.style.left = e.clientX + 'px';
+  ghost.style.top  = e.clientY + 'px';
+  document.body.appendChild(ghost);
+
+  // Remove from chart immediately if it was placed
+  if (placed[id]) {
+    delete placed[id];
+    renderChips();
+    renderTray();
+  }
+
+  drag = { id, ghost };
+}
+
+document.addEventListener('mousemove', e => {
+  if (!drag) return;
+  drag.ghost.style.left = e.clientX + 'px';
+  drag.ghost.style.top  = e.clientY + 'px';
+
+  // Highlight chart when hovering over it
+  const rect = chartEl.getBoundingClientRect();
+  const over = e.clientX >= rect.left && e.clientX <= rect.right &&
+               e.clientY >= rect.top  && e.clientY <= rect.bottom;
+  chartEl.classList.toggle('drag-over', over);
+});
+
+document.addEventListener('mouseup', e => {
+  if (!drag) return;
+
+  drag.ghost.remove();
+  chartEl.classList.remove('drag-over');
+
+  const rect = chartEl.getBoundingClientRect();
+  const rx = e.clientX - rect.left;
+  const ry = e.clientY - rect.top;
+
+  if (rx >= 0 && rx <= rect.width && ry >= 0 && ry <= rect.height) {
+    const xVal = Math.round(rx / rect.width  * RANGE + MIN);
+    const yVal = Math.round((1 - ry / rect.height) * RANGE + MIN);
+    placed[drag.id] = {
+      x: Math.max(MIN, Math.min(MAX, xVal)),
+      y: Math.max(MIN, Math.min(MAX, yVal)),
+    };
+  }
+  // If dropped outside chart, team just returns to tray (not in placed)
+
+  renderChips();
+  renderTray();
+  drag = null;
+});
+
+// ---- Save / Modal ----
+function buildCSV(rows) {
+  const header = 'Team,Goodness,Likeability';
+  const lines = rows.map(r => `${r.name},${r.x},${r.y}`);
+  return [header, ...lines].join('\n');
+}
+
+function openModal() {
+  // Sort by goodness desc, then likeability desc
+  const rows = Object.entries(placed).map(([id, pos]) => ({
+    id,
+    name: teams[id].name,
+    bg: teams[id].bg,
+    fg: teams[id].fg,
+    x: pos.x,
+    y: pos.y,
+    _x: pos.x,
+    _y: pos.y,
+  })).sort((a, b) => b._x - a._x || b._y - a._y);
+
+  const tbody = document.getElementById('modal-tbody');
+  tbody.innerHTML = '';
+  rows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td><span class="team-swatch" style="background:${r.bg}"></span>${r.name}</td>
+      <td>${r.x}</td>
+      <td>${r.y}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('modal-bg').classList.remove('hidden');
+
+  document.getElementById('btn-copy').onclick = () => {
+    navigator.clipboard.writeText(buildCSV(rows)).then(() => {
+      const btn = document.getElementById('btn-copy');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy CSV'; }, 1800);
+    });
+  };
+
+  document.getElementById('btn-dl').onclick = () => {
+    const blob = new Blob([buildCSV(rows)], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'nfl_rankings.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+}
+
+document.getElementById('btn-save').addEventListener('click', openModal);
+document.getElementById('modal-close').addEventListener('click', () => {
+  document.getElementById('modal-bg').classList.add('hidden');
+});
+document.getElementById('modal-bg').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-bg'))
+    document.getElementById('modal-bg').classList.add('hidden');
+});
+
+
+// ---- Init ----
+initChart();
+renderTray();
+renderChips();
+</script>
+</body>
+</html>
