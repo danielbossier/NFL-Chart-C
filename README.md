@@ -1,1 +1,1 @@
-Ranking NFL Teams by Quality and Likeability
+Ranking NFL, MLB, and NBA Teams by both Quality and Likeability
