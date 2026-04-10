@@ -416,6 +416,10 @@ header span { font-size: 0.8rem; color: #8b949e; }
     -webkit-overflow-scrolling: touch;
   }
 
+  .tray-head { padding: 5px 10px; }
+  .tray-head strong { font-size: 0.7rem; }
+  .tray-count { font-size: 0.62rem; }
+
   .conf-col { min-width: 0; }
 }
 
