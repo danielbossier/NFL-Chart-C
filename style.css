@@ -380,6 +380,31 @@ header span { font-size: 0.8rem; color: #8b949e; }
 .btn-toggle.active { background: #30363d; color: #e6edf3; }
 .btn-toggle:hover:not(.active) { color: #e6edf3; }
 
+/* ---- Mobile ---- */
+@media (max-width: 700px) {
+  body { height: auto; overflow: auto; }
+
+  .layout { flex-direction: column; overflow: visible; }
+
+  .chart-side {
+    padding: 24px 16px 48px 48px;
+  }
+
+  .chart-wrap {
+    max-width: 100%;
+  }
+
+  .tray-side {
+    flex: none;
+    border-left: none;
+    border-top: 1px solid #30363d;
+  }
+
+  .tray-scroll { flex-direction: column; }
+
+  .conf-col { min-width: 0; }
+}
+
 /* drag ghost */
 .ghost {
   position: fixed;
