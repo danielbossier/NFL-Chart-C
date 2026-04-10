@@ -164,6 +164,7 @@ function startDrag(id, x, y) {
   }
 
   drag = { id, ghost };
+  document.addEventListener('touchmove', onDragMove, { passive: false });
 }
 
 function beginDrag(e, id) {
@@ -177,6 +178,7 @@ function beginDragTouch(e, id) {
   // Don't preventDefault here — let the browser decide scroll vs drag
   const touch = e.touches[0];
   pendingTouch = { id, startX: touch.clientX, startY: touch.clientY };
+  document.addEventListener('touchmove', onDragMove, { passive: false });
 }
 
 function onDragMove(e) {
@@ -205,7 +207,10 @@ function onDragMove(e) {
 }
 
 function onDragEnd(e) {
-  pendingTouch = null;
+  if (pendingTouch) {
+    document.removeEventListener('touchmove', onDragMove);
+    pendingTouch = null;
+  }
 
   if (!drag) return;
 
@@ -228,12 +233,12 @@ function onDragEnd(e) {
 
   renderChips();
   renderTray();
+  document.removeEventListener('touchmove', onDragMove);
   drag = null;
 }
 
 document.addEventListener('mousemove', onDragMove);
 document.addEventListener('mouseup', onDragEnd);
-document.addEventListener('touchmove', onDragMove, { passive: false });
 document.addEventListener('touchend', onDragEnd);
 
 // ---- Save / Modal ----
