@@ -4,19 +4,19 @@ This file guides Claude Code's behavior in this repository. Update it as the pro
 
 ## Project Purpose
 
-A single-page web app for ranking sports teams on a 2D chart with **Goodness** (x-axis) and **Likeability** (y-axis) axes. Users drag team chips from a tray onto the chart to place them, and can export results as CSV. Supports **NFL** (32 teams) and **MLB** (30 teams) with a toggle to switch between sports.
+A single-page web app for ranking sports teams on a 2D chart with **Goodness** (x-axis) and **Likeability** (y-axis) axes. Users drag team chips from a tray onto the chart to place them, and can export results as CSV. Supports **NFL** (32 teams), **MLB** (30 teams), and **NBA** (30 teams) with a toggle to switch between sports. Fully responsive with mobile touch support.
 
 ## Architecture
 
-Three files — no build step, no dependencies:
+Four files — no build step, no dependencies:
 
 - `index.html` — markup only; links to `style.css`, `js/data.js`, and `js/app.js`
-- `style.css` — all styles
+- `style.css` — all styles, including a `@media (max-width: 700px)` block for mobile
 - `js/data.js` — the `sports` data object (teams, divisions, colors per sport)
 - `js/app.js` — all application logic; reads from `sports` declared in `data.js`
 
 **Key data structures:**
-- `sports` — object keyed by sport (`nfl`, `mlb`), each containing `teams`, `divisions`, `conferences`, `total`, and `divsPerConf`
+- `sports` — object keyed by sport (`nfl`, `mlb`, `nba`), each containing `teams`, `divisions`, `conferences`, `total`, and `divsPerConf`
 - `placed` — flat object keyed by team ID storing `{ x, y }` positions for chips currently on the chart
 - `currentSport` — string tracking the active sport
 
@@ -24,7 +24,10 @@ Three files — no build step, no dependencies:
 - `initChart()` — builds static chart decorations (gridlines, axis labels, quadrant labels)
 - `renderTray()` — rebuilds the team tray split into two conference columns
 - `renderChips()` — rebuilds all chip elements on the chart from `placed`
-- `beginDrag(e, id)` — initiates a drag, creates a ghost element, removes team from `placed` if already on chart
+- `clientXY(e)` — normalizes mouse and touch events to `{ x, y }` coordinates
+- `beginDrag(e, id)` — initiates a drag (mouse or touch), creates a ghost element, removes team from `placed` if already on chart
+- `onDragMove(e)` — handles `mousemove` and `touchmove`; moves ghost, highlights chart when over it
+- `onDragEnd(e)` — handles `mouseup` and `touchend`; places chip on chart or returns it to tray
 - `setSport(key)` — clears `placed`, switches `currentSport`, re-renders tray and chart
 - `openModal()` — builds and shows the rankings table sorted by Goodness then Likeability
 
@@ -33,8 +36,18 @@ Three files — no build step, no dependencies:
 ## Tech Stack
 
 - Vanilla HTML/CSS/JavaScript — no frameworks, no bundler
-- Drag implemented with `mousedown` / `mousemove` / `mouseup` events and a floating ghost element
+- Drag implemented with `mousedown`/`mousemove`/`mouseup` and `touchstart`/`touchmove`/`touchend` events with a floating ghost element
+- Touch listeners use `{ passive: false }` to allow `preventDefault()` and block page scroll during drag
 - CSV export via `Blob` + `URL.createObjectURL`
+
+## Mobile Layout
+
+At ≤ 700px:
+- The page does not scroll — `body` is `height: 100vh; overflow: hidden`
+- The chart is fixed-height at the top (`flex: 0 0 auto`)
+- The team tray fills remaining space below and scrolls independently
+- The two conference columns stack into a single column
+- Drag works via touch events
 
 ## Coding Conventions
 
@@ -43,8 +56,9 @@ Three files — no build step, no dependencies:
 - Do not add comments unless the logic is genuinely non-obvious.
 - Do not add error handling for scenarios that cannot occur.
 - Keep abstractions close to where they are used; avoid premature generalization.
-- All sport-specific data (teams, divisions) lives inside the `sports` object — do not add top-level `teams` or `divisions` variables.
-- When adding a new sport, follow the existing `nfl`/`mlb` shape exactly: `{ label, total, conferences, divsPerConf, teams, divisions }`.
+- All sport-specific data (teams, divisions) lives inside the `sports` object in `js/data.js` — do not add top-level variables.
+- When adding a new sport, follow the existing shape exactly: `{ label, total, conferences, divsPerConf, teams, divisions }`.
+- All drag handlers must support both mouse and touch events via `clientXY()`.
 
 ## Debugging
 
@@ -60,7 +74,6 @@ When adding a feature:
 1. Read the existing code in the relevant area first — understand before modifying.
 2. Make the smallest change that satisfies the requirement.
 3. Do not add configuration flags or extension points for hypothetical future needs.
-4. Update tests to cover the new behavior.
 
 ## Running the Project
 

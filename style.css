@@ -382,11 +382,12 @@ header span { font-size: 0.8rem; color: #8b949e; }
 
 /* ---- Mobile ---- */
 @media (max-width: 700px) {
-  body { height: auto; overflow: auto; }
+  body { height: 100vh; overflow: hidden; }
 
-  .layout { flex-direction: column; overflow: visible; }
+  .layout { flex-direction: column; overflow: hidden; }
 
   .chart-side {
+    flex: 0 0 auto;
     padding: 24px 16px 48px 48px;
   }
 
@@ -395,12 +396,16 @@ header span { font-size: 0.8rem; color: #8b949e; }
   }
 
   .tray-side {
-    flex: none;
+    flex: 1;
+    min-height: 0;
     border-left: none;
     border-top: 1px solid #30363d;
   }
 
-  .tray-scroll { flex-direction: column; }
+  .tray-scroll {
+    flex-direction: column;
+    overflow-y: auto;
+  }
 
   .conf-col { min-width: 0; }
 }
