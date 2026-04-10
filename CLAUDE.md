@@ -8,7 +8,12 @@ A single-page web app for ranking sports teams on a 2D chart with **Goodness** (
 
 ## Architecture
 
-Single file: `index.html` — all HTML, CSS, and JavaScript in one file. No build step, no dependencies.
+Three files — no build step, no dependencies:
+
+- `index.html` — markup only; links to `style.css`, `js/data.js`, and `js/app.js`
+- `style.css` — all styles
+- `js/data.js` — the `sports` data object (teams, divisions, colors per sport)
+- `js/app.js` — all application logic; reads from `sports` declared in `data.js`
 
 **Key data structures:**
 - `sports` — object keyed by sport (`nfl`, `mlb`), each containing `teams`, `divisions`, `conferences`, `total`, and `divsPerConf`
@@ -60,3 +65,5 @@ When adding a feature:
 ## Running the Project
 
 Open `index.html` directly in a browser — no server or build step required.
+
+> Note: some browsers block local `<script src>` loads when opening a file via `file://`. If the page is blank, serve the folder with any static server (e.g. `npx serve .` or VS Code Live Server).
