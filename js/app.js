@@ -93,7 +93,7 @@ function renderTray() {
         chip.style.color = t.fg;
         if (!placed[id]) {
           chip.addEventListener('mousedown', e => beginDrag(e, id));
-          chip.addEventListener('touchstart', e => beginDrag(e, id), { passive: false });
+          chip.addEventListener('touchstart', e => beginDragTouch(e, id), { passive: true });
         }
         wrap.appendChild(chip);
       });
@@ -136,19 +136,17 @@ function renderChips() {
 }
 
 // ---- Drag ----
+const DRAG_THRESHOLD = 8; // px finger must move before a touch becomes a drag
 let drag = null;
+let pendingTouch = null; // { id, startX, startY }
 
 function clientXY(e) {
   return e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
                    : { x: e.clientX, y: e.clientY };
 }
 
-function beginDrag(e, id) {
-  e.preventDefault();
-  e.stopPropagation();
-
+function startDrag(id, x, y) {
   const t = sports[currentSport].teams[id];
-  const { x, y } = clientXY(e);
 
   const ghost = document.createElement('div');
   ghost.className = 'ghost';
@@ -168,8 +166,34 @@ function beginDrag(e, id) {
   drag = { id, ghost };
 }
 
+function beginDrag(e, id) {
+  e.preventDefault();
+  e.stopPropagation();
+  const { x, y } = clientXY(e);
+  startDrag(id, x, y);
+}
+
+function beginDragTouch(e, id) {
+  // Don't preventDefault here — let the browser decide scroll vs drag
+  const touch = e.touches[0];
+  pendingTouch = { id, startX: touch.clientX, startY: touch.clientY };
+}
+
 function onDragMove(e) {
+  if (pendingTouch && e.touches) {
+    const dx = e.touches[0].clientX - pendingTouch.startX;
+    const dy = e.touches[0].clientY - pendingTouch.startY;
+    if (Math.hypot(dx, dy) >= DRAG_THRESHOLD) {
+      // Finger moved enough — commit to drag and block scroll
+      e.preventDefault();
+      startDrag(pendingTouch.id, e.touches[0].clientX, e.touches[0].clientY);
+      pendingTouch = null;
+    }
+    return;
+  }
+
   if (!drag) return;
+  if (e.cancelable) e.preventDefault();
   const { x, y } = clientXY(e);
   drag.ghost.style.left = x + 'px';
   drag.ghost.style.top  = y + 'px';
@@ -181,6 +205,8 @@ function onDragMove(e) {
 }
 
 function onDragEnd(e) {
+  pendingTouch = null;
+
   if (!drag) return;
 
   drag.ghost.remove();
