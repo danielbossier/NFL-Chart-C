@@ -411,6 +411,7 @@ header span { font-size: 0.8rem; color: #8b949e; }
   <div class="sport-toggle">
     <button class="btn-toggle active" data-sport="nfl">NFL</button>
     <button class="btn-toggle" data-sport="mlb">MLB</button>
+    <button class="btn-toggle" data-sport="nba">NBA</button>
   </div>
 </header>
 
@@ -560,6 +561,52 @@ const sports = {
       { label: 'NL East',    ids: ['atl','mia','nym','phi','was'] },
       { label: 'NL Central', ids: ['chc','cin','mil','pit','stl'] },
       { label: 'NL West',    ids: ['ari','col','lad','sd','sf'] },
+    ],
+  },
+  nba: {
+    label: 'NBA',
+    total: 30,
+    conferences: ['East', 'West'],
+    divsPerConf: 3,
+    teams: {
+      bos:  { name: 'Celtics',      bg: '#007A33', fg: '#fff' },
+      bkn:  { name: 'Nets',         bg: '#000000', fg: '#fff' },
+      nyk:  { name: 'Knicks',       bg: '#F58426', fg: '#006BB6' },
+      phi:  { name: '76ers',        bg: '#006BB6', fg: '#ED174C' },
+      tor:  { name: 'Raptors',      bg: '#CE1141', fg: '#fff' },
+      chi:  { name: 'Bulls',        bg: '#CE1141', fg: '#000' },
+      cle:  { name: 'Cavaliers',    bg: '#860038', fg: '#FDBB30' },
+      det:  { name: 'Pistons',      bg: '#C8102E', fg: '#1D42BA' },
+      ind:  { name: 'Pacers',       bg: '#002D62', fg: '#FDBB30' },
+      mil:  { name: 'Bucks',        bg: '#00471B', fg: '#EEE1C6' },
+      atl:  { name: 'Hawks',        bg: '#C1D32F', fg: '#E03A3E' },
+      cha:  { name: 'Hornets',      bg: '#1D1160', fg: '#00788C' },
+      mia:  { name: 'Heat',         bg: '#98002E', fg: '#F9A01B' },
+      orl:  { name: 'Magic',        bg: '#0077C0', fg: '#C4CED4' },
+      was:  { name: 'Wizards',      bg: '#002B5C', fg: '#E31837' },
+      den:  { name: 'Nuggets',      bg: '#0E2240', fg: '#FEC524' },
+      min:  { name: 'Timberwolves', bg: '#0C2340', fg: '#236192' },
+      okc:  { name: 'Thunder',      bg: '#007AC1', fg: '#EF3B24' },
+      por:  { name: 'Trail Blazers',bg: '#E03A3E', fg: '#000' },
+      uta:  { name: 'Jazz',         bg: '#002B5C', fg: '#00471B' },
+      gsw:  { name: 'Warriors',     bg: '#1D428A', fg: '#FFC72C' },
+      lac:  { name: 'Clippers',     bg: '#C8102E', fg: '#1D428A' },
+      lal:  { name: 'Lakers',       bg: '#552583', fg: '#FDB927' },
+      phx:  { name: 'Suns',         bg: '#1D1160', fg: '#E56020' },
+      sac:  { name: 'Kings',        bg: '#5A2D81', fg: '#63727A' },
+      dal:  { name: 'Mavericks',    bg: '#00538C', fg: '#002B5E' },
+      hou:  { name: 'Rockets',      bg: '#CE1141', fg: '#000' },
+      mem:  { name: 'Grizzlies',    bg: '#5D76A9', fg: '#12173F' },
+      nop:  { name: 'Pelicans',     bg: '#0C2340', fg: '#C8102E' },
+      sas:  { name: 'Spurs',        bg: '#C4CED4', fg: '#000' },
+    },
+    divisions: [
+      { label: 'East Atlantic', ids: ['bos','bkn','nyk','phi','tor'] },
+      { label: 'East Central',  ids: ['chi','cle','det','ind','mil'] },
+      { label: 'East Southeast',ids: ['atl','cha','mia','orl','was'] },
+      { label: 'West Northwest',ids: ['den','min','okc','por','uta'] },
+      { label: 'West Pacific',  ids: ['gsw','lac','lal','phx','sac'] },
+      { label: 'West Southwest',ids: ['dal','hou','mem','nop','sas'] },
     ],
   },
 };
