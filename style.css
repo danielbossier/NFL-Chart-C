@@ -412,7 +412,6 @@ header span { font-size: 0.8rem; color: #8b949e; }
   }
 
   .tray-scroll {
-    flex-direction: column;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
