@@ -93,6 +93,7 @@ function renderTray() {
         chip.style.color = t.fg;
         if (!placed[id]) {
           chip.addEventListener('mousedown', e => beginDrag(e, id));
+          chip.addEventListener('touchstart', e => beginDrag(e, id), { passive: false });
         }
         wrap.appendChild(chip);
       });
@@ -129,6 +130,7 @@ function renderChips() {
     chip.appendChild(coordEl);
 
     chip.addEventListener('mousedown', e => beginDrag(e, id));
+    chip.addEventListener('touchstart', e => beginDrag(e, id), { passive: false });
     chartEl.appendChild(chip);
   });
 }
@@ -136,19 +138,25 @@ function renderChips() {
 // ---- Drag ----
 let drag = null;
 
+function clientXY(e) {
+  return e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+                   : { x: e.clientX, y: e.clientY };
+}
+
 function beginDrag(e, id) {
   e.preventDefault();
   e.stopPropagation();
 
   const t = sports[currentSport].teams[id];
+  const { x, y } = clientXY(e);
 
   const ghost = document.createElement('div');
   ghost.className = 'ghost';
   ghost.textContent = t.name;
   ghost.style.background = t.bg;
   ghost.style.color = t.fg;
-  ghost.style.left = e.clientX + 'px';
-  ghost.style.top  = e.clientY + 'px';
+  ghost.style.left = x + 'px';
+  ghost.style.top  = y + 'px';
   document.body.appendChild(ghost);
 
   if (placed[id]) {
@@ -160,26 +168,28 @@ function beginDrag(e, id) {
   drag = { id, ghost };
 }
 
-document.addEventListener('mousemove', e => {
+function onDragMove(e) {
   if (!drag) return;
-  drag.ghost.style.left = e.clientX + 'px';
-  drag.ghost.style.top  = e.clientY + 'px';
+  const { x, y } = clientXY(e);
+  drag.ghost.style.left = x + 'px';
+  drag.ghost.style.top  = y + 'px';
 
   const rect = chartEl.getBoundingClientRect();
-  const over = e.clientX >= rect.left && e.clientX <= rect.right &&
-               e.clientY >= rect.top  && e.clientY <= rect.bottom;
+  const over = x >= rect.left && x <= rect.right &&
+               y >= rect.top  && y <= rect.bottom;
   chartEl.classList.toggle('drag-over', over);
-});
+}
 
-document.addEventListener('mouseup', e => {
+function onDragEnd(e) {
   if (!drag) return;
 
   drag.ghost.remove();
   chartEl.classList.remove('drag-over');
 
+  const pt = e.changedTouches ? e.changedTouches[0] : e;
   const rect = chartEl.getBoundingClientRect();
-  const rx = e.clientX - rect.left;
-  const ry = e.clientY - rect.top;
+  const rx = pt.clientX - rect.left;
+  const ry = pt.clientY - rect.top;
 
   if (rx >= 0 && rx <= rect.width && ry >= 0 && ry <= rect.height) {
     const xVal = Math.round(rx / rect.width  * RANGE + MIN);
@@ -193,7 +203,12 @@ document.addEventListener('mouseup', e => {
   renderChips();
   renderTray();
   drag = null;
-});
+}
+
+document.addEventListener('mousemove', onDragMove);
+document.addEventListener('mouseup', onDragEnd);
+document.addEventListener('touchmove', onDragMove, { passive: false });
+document.addEventListener('touchend', onDragEnd);
 
 // ---- Save / Modal ----
 function buildCSV(rows) {
