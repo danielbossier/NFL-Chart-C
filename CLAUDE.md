@@ -25,7 +25,9 @@ Four files — no build step, no dependencies:
 - `renderTray()` — rebuilds the team tray split into two conference columns
 - `renderChips()` — rebuilds all chip elements on the chart from `placed`
 - `clientXY(e)` — normalizes mouse and touch events to `{ x, y }` coordinates
-- `beginDrag(e, id)` — initiates a drag (mouse or touch), creates a ghost element, removes team from `placed` if already on chart
+- `startDrag(id, x, y)` — creates the ghost element, removes team from `placed` if already on chart, registers the non-passive `touchmove` listener
+- `beginDrag(e, id)` — used for chart chips (mouse or touch); calls `preventDefault()` and delegates to `startDrag`
+- `beginDragTouch(e, id)` — used for tray chips; records `pendingTouch` without blocking scroll, registers non-passive `touchmove` to detect drag threshold
 - `onDragMove(e)` — handles `mousemove` and `touchmove`; moves ghost, highlights chart when over it
 - `onDragEnd(e)` — handles `mouseup` and `touchend`; places chip on chart or returns it to tray
 - `setSport(key)` — clears `placed`, switches `currentSport`, re-renders tray and chart
@@ -37,7 +39,7 @@ Four files — no build step, no dependencies:
 
 - Vanilla HTML/CSS/JavaScript — no frameworks, no bundler
 - Drag implemented with `mousedown`/`mousemove`/`mouseup` and `touchstart`/`touchmove`/`touchend` events with a floating ghost element
-- Touch listeners use `{ passive: false }` to allow `preventDefault()` and block page scroll during drag
+- Touch listeners on the document `touchmove` are added dynamically (non-passive) only when a drag is active, and removed on `touchend` — this allows normal tray scroll when not dragging
 - CSV export via `Blob` + `URL.createObjectURL`
 
 ## Mobile Layout
@@ -46,7 +48,7 @@ At ≤ 700px:
 - The page does not scroll — `body` is `height: 100vh; overflow: hidden`
 - The chart is fixed-height at the top (`flex: 0 0 auto`)
 - The team tray fills remaining space below and scrolls independently
-- The two conference columns stack into a single column
+- The two conference columns remain side-by-side (not stacked) with a larger gap (`48px`) for easier scrolling
 - Drag works via touch events
 
 ## Coding Conventions
