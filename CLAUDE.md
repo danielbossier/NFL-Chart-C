@@ -4,24 +4,32 @@ This file guides Claude Code's behavior in this repository. Update it as the pro
 
 ## Project Purpose
 
-<!-- Describe what this project does and why it exists. -->
-<!-- Example: "A CLI tool for X", "A web app that does Y", "A library for Z" -->
-
-_TODO: Add project description._
+A single-page web app for ranking sports teams on a 2D chart with **Goodness** (x-axis) and **Likeability** (y-axis) axes. Users drag team chips from a tray onto the chart to place them, and can export results as CSV. Supports **NFL** (32 teams) and **MLB** (30 teams) with a toggle to switch between sports.
 
 ## Architecture
 
-<!-- Describe the high-level structure of the project. -->
-<!-- Example: directory layout, data flow, key modules and their responsibilities. -->
+Single file: `index.html` — all HTML, CSS, and JavaScript in one file. No build step, no dependencies.
 
-_TODO: Add architecture notes once the project structure is established._
+**Key data structures:**
+- `sports` — object keyed by sport (`nfl`, `mlb`), each containing `teams`, `divisions`, `conferences`, `total`, and `divsPerConf`
+- `placed` — flat object keyed by team ID storing `{ x, y }` positions for chips currently on the chart
+- `currentSport` — string tracking the active sport
+
+**Key functions:**
+- `initChart()` — builds static chart decorations (gridlines, axis labels, quadrant labels)
+- `renderTray()` — rebuilds the team tray split into two conference columns
+- `renderChips()` — rebuilds all chip elements on the chart from `placed`
+- `beginDrag(e, id)` — initiates a drag, creates a ghost element, removes team from `placed` if already on chart
+- `setSport(key)` — clears `placed`, switches `currentSport`, re-renders tray and chart
+- `openModal()` — builds and shows the rankings table sorted by Goodness then Likeability
+
+**Coordinate system:** chart values run from -10 to +10 on both axes. Pixel position converts to/from this range via `(v - MIN) / RANGE * 100 + '%'`.
 
 ## Tech Stack
 
-<!-- List the primary languages, frameworks, and tools used. -->
-<!-- Example: TypeScript, Node.js, React, PostgreSQL, Jest -->
-
-_TODO: Add stack details._
+- Vanilla HTML/CSS/JavaScript — no frameworks, no bundler
+- Drag implemented with `mousedown` / `mousemove` / `mouseup` events and a floating ghost element
+- CSV export via `Blob` + `URL.createObjectURL`
 
 ## Coding Conventions
 
@@ -30,11 +38,8 @@ _TODO: Add stack details._
 - Do not add comments unless the logic is genuinely non-obvious.
 - Do not add error handling for scenarios that cannot occur.
 - Keep abstractions close to where they are used; avoid premature generalization.
-
-<!-- Add project-specific rules here as they emerge. Examples: -->
-<!-- - Use named exports only (no default exports) -->
-<!-- - All async functions must be awaited at the call site, never `.then()`-chained -->
-<!-- - Tests live next to source files as *.test.ts -->
+- All sport-specific data (teams, divisions) lives inside the `sports` object — do not add top-level `teams` or `divisions` variables.
+- When adding a new sport, follow the existing `nfl`/`mlb` shape exactly: `{ label, total, conferences, divsPerConf, teams, divisions }`.
 
 ## Debugging
 
@@ -54,12 +59,4 @@ When adding a feature:
 
 ## Running the Project
 
-<!-- Fill in once the project has a build/run setup. -->
-<!-- Example: -->
-<!-- ```bash -->
-<!-- npm install     # install deps -->
-<!-- npm run dev     # start dev server -->
-<!-- npm test        # run tests -->
-<!-- ``` -->
-
-_TODO: Add commands once the project is initialized._
+Open `index.html` directly in a browser — no server or build step required.
