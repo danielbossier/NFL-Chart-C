@@ -414,6 +414,7 @@ header span { font-size: 0.8rem; color: #8b949e; }
   .tray-scroll {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    gap: 24px;
   }
 
   .tray-head { padding: 5px 10px; }
