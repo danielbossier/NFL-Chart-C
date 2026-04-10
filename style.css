@@ -382,7 +382,12 @@ header span { font-size: 0.8rem; color: #8b949e; }
 
 /* ---- Mobile ---- */
 @media (max-width: 700px) {
-  body { height: 100vh; overflow: hidden; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
 
   .layout { flex-direction: column; overflow: hidden; }
 
@@ -395,6 +400,10 @@ header span { font-size: 0.8rem; color: #8b949e; }
     max-width: 100%;
   }
 
+  #chart {
+    touch-action: none;
+  }
+
   .tray-side {
     flex: 1;
     min-height: 0;
@@ -405,6 +414,7 @@ header span { font-size: 0.8rem; color: #8b949e; }
   .tray-scroll {
     flex-direction: column;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .conf-col { min-width: 0; }
