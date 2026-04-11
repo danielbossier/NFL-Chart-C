@@ -342,6 +342,42 @@ document.getElementById('btn-clear').addEventListener('click', () => {
   renderTray();
 });
 
+document.getElementById('btn-load').addEventListener('click', () => {
+  document.getElementById('csv-input').click();
+});
+
+document.getElementById('csv-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const sport = sports[currentSport];
+    const nameToId = {};
+    Object.entries(sport.teams).forEach(([id, t]) => { nameToId[t.name] = id; });
+
+    Object.keys(placed).forEach(k => delete placed[k]);
+
+    ev.target.result.trim().split('\n').slice(1).forEach(line => {
+      const parts = line.split(',');
+      if (parts.length < 3) return;
+      const name = parts[0].trim();
+      const x = parseFloat(parts[1]);
+      const y = parseFloat(parts[2]);
+      const id = nameToId[name];
+      if (!id || isNaN(x) || isNaN(y)) return;
+      placed[id] = {
+        x: Math.max(MIN, Math.min(MAX, Math.round(x))),
+        y: Math.max(MIN, Math.min(MAX, Math.round(y))),
+      };
+    });
+
+    renderChips();
+    renderTray();
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
 // ---- Init ----
 initChart();
 renderTray();

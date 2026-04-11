@@ -268,6 +268,20 @@ header span { font-size: 0.8rem; color: #8b949e; }
 }
 .btn-clear:hover:not(:disabled) { background: #30363d; border-color: #484f58; color: #e6edf3; }
 .btn-clear:disabled { cursor: not-allowed; opacity: 0.4; }
+.btn-load {
+  width: 100%;
+  padding: 7px 0;
+  border-radius: 5px;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #8b949e;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn-load:hover { background: #30363d; border-color: #484f58; color: #e6edf3; }
 
 /* modal */
 .modal-bg {
