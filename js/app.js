@@ -150,11 +150,19 @@ function startDrag(id, x, y) {
 
   const ghost = document.createElement('div');
   ghost.className = 'ghost';
-  ghost.textContent = t.name;
   ghost.style.background = t.bg;
   ghost.style.color = t.fg;
   ghost.style.left = x + 'px';
   ghost.style.top  = y + 'px';
+
+  const ghostName = document.createElement('span');
+  ghostName.textContent = t.name;
+  ghost.appendChild(ghostName);
+
+  const ghostCoord = document.createElement('span');
+  ghostCoord.className = 'chip-coords';
+  ghost.appendChild(ghostCoord);
+
   document.body.appendChild(ghost);
 
   if (placed[id]) {
@@ -163,7 +171,7 @@ function startDrag(id, x, y) {
     renderTray();
   }
 
-  drag = { id, ghost };
+  drag = { id, ghost, ghostCoord };
   document.addEventListener('touchmove', onDragMove, { passive: false });
 }
 
@@ -204,6 +212,14 @@ function onDragMove(e) {
   const over = x >= rect.left && x <= rect.right &&
                y >= rect.top  && y <= rect.bottom;
   chartEl.classList.toggle('drag-over', over);
+
+  if (over) {
+    const xVal = Math.max(MIN, Math.min(MAX, Math.round((x - rect.left) / rect.width  * RANGE + MIN)));
+    const yVal = Math.max(MIN, Math.min(MAX, Math.round((1 - (y - rect.top) / rect.height) * RANGE + MIN)));
+    drag.ghostCoord.textContent = `G:${xVal}  L:${yVal}`;
+  } else {
+    drag.ghostCoord.textContent = '';
+  }
 }
 
 function onDragEnd(e) {
