@@ -140,9 +140,9 @@ header span { font-size: 0.8rem; color: #8b949e; }
 }
 .ylabel {
   position: absolute;
-  left: -52px;
+  left: -44px;
   top: 50%;
-  transform: translateY(-50%) rotate(-90deg);
+  transform: translateX(-50%) translateY(-50%) rotate(-90deg);
   font-size: 0.72rem;
   color: #8b949e;
   text-transform: uppercase;
