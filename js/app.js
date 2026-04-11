@@ -109,8 +109,11 @@ function renderTray() {
 // ---- Render chart chips ----
 function renderChips() {
   chartEl.querySelectorAll('.chip').forEach(el => el.remove());
+  activeFan = null;
 
   const sport = sports[currentSport];
+  const chipMap = {};
+
   Object.entries(placed).forEach(([id, pos]) => {
     const t = sport.teams[id];
     const chip = document.createElement('div');
@@ -126,12 +129,54 @@ function renderChips() {
 
     const coordEl = document.createElement('span');
     coordEl.className = 'chip-coords';
-    coordEl.textContent = `G:${pos.x}  L:${pos.y}`;
+    coordEl.textContent = `G:${Math.round(pos.x)}  L:${Math.round(pos.y)}`;
     chip.appendChild(coordEl);
 
     chip.addEventListener('mousedown', e => beginDrag(e, id));
     chip.addEventListener('touchstart', e => beginDrag(e, id), { passive: false });
     chartEl.appendChild(chip);
+    chipMap[id] = chip;
+  });
+
+  // Group chips by rounded position and wire up hover fan for stacks
+  const groups = {};
+  Object.entries(placed).forEach(([id, pos]) => {
+    const key = `${Math.round(pos.x)},${Math.round(pos.y)}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(chipMap[id]);
+  });
+
+  Object.values(groups).filter(g => g.length > 1).forEach(els => {
+    els.forEach(el => {
+      el.addEventListener('mouseenter', () => {
+        if (activeFan && activeFan !== els) applyFan(activeFan, false);
+        applyFan(els, true);
+        activeFan = els;
+      });
+      el.addEventListener('mouseleave', e => {
+        if (!els.includes(e.relatedTarget)) {
+          applyFan(els, false);
+          activeFan = null;
+        }
+      });
+    });
+  });
+}
+
+// ---- Fan (hover to separate overlapping chips) ----
+let activeFan = null;
+
+function applyFan(els, expanded) {
+  const n = els.length;
+  els.forEach((el, i) => {
+    if (expanded) {
+      const offset = (i - (n - 1) / 2) * 68;
+      el.style.transform = `translate(calc(-50% + ${offset}px), -50%)`;
+      el.style.zIndex = 20 + i;
+    } else {
+      el.style.transform = '';
+      el.style.zIndex = '';
+    }
   });
 }
 
@@ -239,11 +284,13 @@ function onDragEnd(e) {
   const ry = pt.clientY - rect.top;
 
   if (rx >= 0 && rx <= rect.width && ry >= 0 && ry <= rect.height) {
-    const xVal = Math.round(rx / rect.width  * RANGE + MIN);
-    const yVal = Math.round((1 - ry / rect.height) * RANGE + MIN);
+    const xVal = Math.max(MIN, Math.min(MAX, Math.round(rx / rect.width  * RANGE + MIN)));
+    const yVal = Math.max(MIN, Math.min(MAX, Math.round((1 - ry / rect.height) * RANGE + MIN)));
+    const overlap = Object.values(placed).some(p => Math.round(p.x) === xVal && Math.round(p.y) === yVal);
+    const JITTER = 0.4;
     placed[drag.id] = {
-      x: Math.max(MIN, Math.min(MAX, xVal)),
-      y: Math.max(MIN, Math.min(MAX, yVal)),
+      x: overlap ? Math.max(MIN, Math.min(MAX, xVal + (Math.random() * 2 - 1) * JITTER)) : xVal,
+      y: overlap ? Math.max(MIN, Math.min(MAX, yVal + (Math.random() * 2 - 1) * JITTER)) : yVal,
     };
   }
 
@@ -272,8 +319,8 @@ function openModal() {
     name: sport.teams[id].name,
     bg: sport.teams[id].bg,
     fg: sport.teams[id].fg,
-    x: pos.x,
-    y: pos.y,
+    x: Math.round(pos.x),
+    y: Math.round(pos.y),
     _x: pos.x,
     _y: pos.y,
   })).sort((a, b) => b._x - a._x || b._y - a._y);
