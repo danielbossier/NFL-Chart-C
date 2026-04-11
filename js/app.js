@@ -109,11 +109,8 @@ function renderTray() {
 // ---- Render chart chips ----
 function renderChips() {
   chartEl.querySelectorAll('.chip').forEach(el => el.remove());
-  activeFan = null;
 
   const sport = sports[currentSport];
-  const chipMap = {};
-
   Object.entries(placed).forEach(([id, pos]) => {
     const t = sport.teams[id];
     const chip = document.createElement('div');
@@ -135,48 +132,6 @@ function renderChips() {
     chip.addEventListener('mousedown', e => beginDrag(e, id));
     chip.addEventListener('touchstart', e => beginDrag(e, id), { passive: false });
     chartEl.appendChild(chip);
-    chipMap[id] = chip;
-  });
-
-  // Group chips by rounded position and wire up hover fan for stacks
-  const groups = {};
-  Object.entries(placed).forEach(([id, pos]) => {
-    const key = `${Math.round(pos.x)},${Math.round(pos.y)}`;
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(chipMap[id]);
-  });
-
-  Object.values(groups).filter(g => g.length > 1).forEach(els => {
-    els.forEach(el => {
-      el.addEventListener('mouseenter', () => {
-        if (activeFan && activeFan !== els) applyFan(activeFan, false);
-        applyFan(els, true);
-        activeFan = els;
-      });
-      el.addEventListener('mouseleave', e => {
-        if (!els.includes(e.relatedTarget)) {
-          applyFan(els, false);
-          activeFan = null;
-        }
-      });
-    });
-  });
-}
-
-// ---- Fan (hover to separate overlapping chips) ----
-let activeFan = null;
-
-function applyFan(els, expanded) {
-  const n = els.length;
-  els.forEach((el, i) => {
-    if (expanded) {
-      const offset = (i - (n - 1) / 2) * 68;
-      el.style.transform = `translate(calc(-50% + ${offset}px), -50%)`;
-      el.style.zIndex = 20 + i;
-    } else {
-      el.style.transform = '';
-      el.style.zIndex = '';
-    }
   });
 }
 
