@@ -4,7 +4,7 @@ This file guides Claude Code's behavior in this repository. Update it as the pro
 
 ## Project Purpose
 
-A single-page web app for ranking sports teams on a 2D chart with **Goodness** (x-axis) and **Likeability** (y-axis) axes. Users drag team chips from a tray onto the chart to place them, and can export results as CSV. Supports **NFL** (32 teams), **MLB** (30 teams), and **NBA** (30 teams) with a toggle to switch between sports. Fully responsive with mobile touch support.
+A single-page web app for ranking sports teams on a 2D chart with **Goodness** (x-axis) and **Likeability** (y-axis) axes. Users drag team chips from a tray onto the chart to place them, and can export results as CSV. Loading several CSVs combines multiple people's rankings into an **aggregate** (mean position, with a halo showing disagreement), and loading CSVs from different weeks shows a **season** view of how teams moved. Supports **NFL** (32 teams), **MLB** (30 teams), and **NBA** (30 teams) with a toggle to switch between sports. Fully responsive with mobile touch support.
 
 ## Architecture
 
@@ -24,34 +24,49 @@ Four files — no build step, no dependencies:
 **Key functions:**
 - `initChart()` — builds static chart decorations (gridlines, axis labels, quadrant labels)
 - `renderTray()` — rebuilds the team tray split into two conference columns
-- `renderChips()` — rebuilds all chip elements on the chart from `placed`
+- `renderChips()` — rebuilds all chip elements on the chart from `placed`, or from `aggregate.teams` (read-only chips with hover/tap focus) when an aggregate is loaded
 - `clientXY(e)` — normalizes mouse and touch events to `{ x, y }` coordinates
-- `startDrag(id, x, y)` — creates the ghost element, removes team from `placed` if already on chart, registers the non-passive `touchmove` listener
-- `beginDrag(e, id)` — used for chart chips (mouse or touch); calls `preventDefault()` and delegates to `startDrag`
+- `startDrag(id, x, y)` — creates the ghost element, removes team from `placed` if already on chart (re-renders the tray only), registers the non-passive `touchmove` listener
+- `beginDrag(e, id)` — used for chart chips (mouse or touch); calls `preventDefault()`, hides (not removes) the chart chip being dragged, and delegates to `startDrag`
 - `beginDragTouch(e, id)` — used for tray chips; records `pendingTouch` without blocking scroll, registers non-passive `touchmove` to detect drag threshold
 - `onDragMove(e)` — handles `mousemove` and `touchmove`; moves ghost, highlights chart when over it
-- `onDragEnd(e)` — handles `mouseup` and `touchend`; places chip on chart or returns it to tray
-- `setSport(key)` — clears `placed`, switches `currentSport`, re-renders tray and chart
-- `openModal()` — builds and shows the rankings table sorted by Goodness then Likeability (adds a Spread column in aggregate mode)
-- `parseCSV(text)` — parses an exported CSV into `{ teamId: { x, y } }` for the current sport
-- `buildAggregate(entries)` — combines several parsed CSVs into the `aggregate` shape
+- `onDragEnd(e)` — handles `mouseup`, `touchend`, and `touchcancel`; places chip on chart or returns it to tray, then re-renders chips
+- `setSport(key)` — clears `placed` and `aggregate`, switches `currentSport`, re-renders tray and chart
+- `openModal()` — builds and shows the rankings table sorted by Goodness then Likeability; adds a Spread column for an aggregate and Δ Good / Δ Like columns (first week → latest) in season view. Downloads are named `<sport>-<YYYY-MM-DD>.csv` (local date), with `-aggregate` appended for aggregates.
+- `parseCSV(text)` — parses an exported CSV into `{ teamId: { x, y } }` for the current sport; ignores extra columns and malformed lines
+- `weekOf(filename)` — reads the week from a filename (see Loading CSVs)
+- `buildAggregate(entries)` — combines one week's parsed CSVs into `{ count, teams }`
+- `inSeason()` — true when the loaded aggregate spans more than one week
 - `renderSpread(t, id, pos)` — draws a halo ring (radius = `spread`) behind the team's mean chip; for a single week, adds each person's entry as a dot tethered to the chip (shown on hover/tap, which also dims every other team)
-- `renderTrail(spread, t, id)` — in season view, draws the team's path through each week (faint by default, full with week labels on hover/tap)
-- `weekOf(filename)` — reads the week from a filename: a `YYYY-MM-DD` date grouped into Tuesday–Monday weeks, else the first number. Downloads are named `<sport>-<YYYY-MM-DD>.csv`, and loading picks the sport from the first filename.
+- `renderTrail(spread, t, id)` — in season view, draws the team's path through each week as an SVG polyline (faint by default, full with week labels on hover/tap)
 
-**Coordinate system:** chart values run from -10 to +10 on both axes. Pixel position converts to/from this range via `(v - MIN) / RANGE * 100 + '%'`.
+**Coordinate system:** chart values run from -10 to +10 on both axes. Pixel position converts to/from this range via `(v - MIN) / RANGE * 100 + '%'` (helpers `pctX()` / `pctY()`). The chart is square, so a `%` of its width is the same length in either direction — halos and tethers rely on this.
+
+## Loading CSVs
+
+`Load CSV` accepts one or many files:
+- **One file** → loaded into `placed` as an editable ranking.
+- **Several files, one week** → an aggregate: mean position per team, halo radius = standard deviation. Teams a person didn't place are excluded from that team's stats, not counted as 0.
+- **Files from two or more weeks** → season view: chips at the latest week's aggregate, trails through earlier weeks.
+
+The week comes from the filename via `weekOf()`: a `YYYY-MM-DD` date is grouped into Tuesday–Monday weeks (labelled "Week of Oct 27"); otherwise the first number is the week (`week3.csv`); otherwise "Undated" (sorts first). Browser duplicate suffixes like `(1)` are stripped first. The sport is auto-selected if the first filename contains `nfl`, `mlb`, or `nba`.
+
+Don't load an `-aggregate` CSV alongside the files it was built from — its date makes it count as another entry for that week.
 
 ## Tech Stack
 
 - Vanilla HTML/CSS/JavaScript — no frameworks, no bundler
-- Drag implemented with `mousedown`/`mousemove`/`mouseup` and `touchstart`/`touchmove`/`touchend` events with a floating ghost element
+- Drag implemented with `mousedown`/`mousemove`/`mouseup` and `touchstart`/`touchmove`/`touchend`/`touchcancel` events with a floating ghost element
 - Touch listeners on the document `touchmove` are added dynamically (non-passive) only when a drag is active, and removed on `touchend` — this allows normal tray scroll when not dragging
-- CSV export via `Blob` + `URL.createObjectURL`
+- **Never remove the element a touch started on while that touch is active.** Touch events stay targeted at it, and a detached element doesn't bubble `touchend` to `document` — the ghost gets stuck on screen. Hide it instead and let `onDragEnd` re-render.
+- Aggregate hover/tap focus uses `mouseenter`/`mouseleave`, which mobile browsers emulate on tap
+- CSV export via `Blob` + `URL.createObjectURL`; CSV import via `File.text()`
+- The file input has no `accept` filter on purpose — mobile pickers filter by MIME type, and CSVs are often reported as `text/plain` or `application/octet-stream`, which greys them out
 
 ## Mobile Layout
 
 At ≤ 700px:
-- The page does not scroll — `body` is `height: 100vh; overflow: hidden`
+- The page does not scroll — `html, body` are `position: fixed; height: 100%; overflow: hidden`
 - The chart is fixed-height at the top (`flex: 0 0 auto`)
 - The team tray fills remaining space below and scrolls independently
 - The two conference columns remain side-by-side (not stacked) with a larger gap (`48px`) for easier scrolling
@@ -88,3 +103,9 @@ When adding a feature:
 Open `index.html` directly in a browser — no server or build step required.
 
 > Note: some browsers block local `<script src>` loads when opening a file via `file://`. If the page is blank, serve the folder with any static server (e.g. `npx serve .` or VS Code Live Server).
+
+## Deployment
+
+Pushing to `main` deploys the whole repo to GitHub Pages via `.github/workflows/static.yml`. Live site: https://danielbossier.github.io/NFL-Chart-C/
+
+GitHub Pages serves files with `Cache-Control: max-age=600`, so a normal reload can show the previous version for up to 10 minutes after a deploy — hard refresh (or wait) before judging whether a change worked, especially on mobile.
