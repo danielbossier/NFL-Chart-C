@@ -19,6 +19,7 @@ Four files — no build step, no dependencies:
 - `sports` — object keyed by sport (`nfl`, `mlb`, `nba`), each containing `teams`, `divisions`, `conferences`, `total`, and `divsPerConf`
 - `placed` — flat object keyed by team ID storing `{ x, y }` positions for chips currently on the chart
 - `currentSport` — string tracking the active sport
+- `aggregate` — `null`, or `{ count, teams }` while viewing combined entries from several loaded CSVs; each team stores median `x`/`y`, raw `pts`, and `spread` (mean distance of entries from the median). The chart is read-only in this mode.
 
 **Key functions:**
 - `initChart()` — builds static chart decorations (gridlines, axis labels, quadrant labels)
@@ -31,7 +32,10 @@ Four files — no build step, no dependencies:
 - `onDragMove(e)` — handles `mousemove` and `touchmove`; moves ghost, highlights chart when over it
 - `onDragEnd(e)` — handles `mouseup` and `touchend`; places chip on chart or returns it to tray
 - `setSport(key)` — clears `placed`, switches `currentSport`, re-renders tray and chart
-- `openModal()` — builds and shows the rankings table sorted by Goodness then Likeability
+- `openModal()` — builds and shows the rankings table sorted by Goodness then Likeability (adds a Spread column in aggregate mode)
+- `parseCSV(text)` — parses an exported CSV into `{ teamId: { x, y } }` for the current sport
+- `buildAggregate(entries)` — combines several parsed CSVs into the `aggregate` shape
+- `renderSpread(t, pos)` — draws a team's min–max whiskers and individual entry dots (dots show on chip hover/tap)
 
 **Coordinate system:** chart values run from -10 to +10 on both axes. Pixel position converts to/from this range via `(v - MIN) / RANGE * 100 + '%'`.
 

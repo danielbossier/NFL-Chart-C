@@ -113,6 +113,37 @@ header span { font-size: 0.8rem; color: #8b949e; }
   letter-spacing: 0.03em;
 }
 
+.chip.agg { cursor: default; }
+
+/* aggregate spread */
+.spread {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.spread.active { z-index: 15; }
+.whisker {
+  position: absolute;
+  opacity: 0.35;
+  border-radius: 1px;
+}
+.whisker.h { height: 2px; transform: translateY(-50%); }
+.whisker.v { width: 2px; transform: translateX(-50%); }
+.spread.active .whisker { opacity: 1; box-shadow: 0 0 0 1px rgba(255,255,255,0.35); }
+.entry-dot {
+  display: none;
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  transform: translate(-50%, -50%);
+}
+.spread.active .entry-dot { display: block; }
+
+.modal-table th.hidden { display: none; }
+
 /* axis tick labels */
 .xtick {
   position: absolute;

@@ -36,8 +36,8 @@
     <div class="save-footer">
       <button class="btn-save" id="btn-save" disabled>Save Rankings</button>
       <button class="btn-clear" id="btn-clear" disabled>Clear All</button>
-      <button class="btn-load" id="btn-load">Load CSV</button>
-      <input type="file" id="csv-input" accept=".csv" style="display:none">
+      <button class="btn-load" id="btn-load" title="Select several CSVs to see an aggregate">Load CSV</button>
+      <input type="file" id="csv-input" accept=".csv" multiple style="display:none">
     </div>
   </div>
 </div>
@@ -56,6 +56,7 @@
             <th>Team</th>
             <th>Goodness</th>
             <th>Likeability</th>
+            <th id="th-spread" class="hidden">Spread</th>
           </tr>
         </thead>
         <tbody id="modal-tbody"></tbody>

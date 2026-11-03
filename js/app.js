@@ -5,6 +5,9 @@ let currentSport = 'nfl';
 // placed[teamId] = { x: -10–10, y: -10–10 }
 const placed = {};
 
+// aggregate = { count, teams: { [teamId]: { x, y, pts: [{ x, y }], spread } } } while viewing combined entries
+let aggregate = null;
+
 const chartEl = document.getElementById('chart');
 const trayEl  = document.getElementById('tray');
 
@@ -58,9 +61,11 @@ function renderTray() {
   trayEl.innerHTML = '';
   const sport = sports[currentSport];
   const count = Object.keys(placed).length;
-  document.getElementById('tray-count').textContent = count + ' / ' + sport.total + ' placed';
-  document.getElementById('btn-save').disabled = count < sport.total;
-  document.getElementById('btn-clear').disabled = count === 0;
+  document.getElementById('tray-count').textContent = aggregate
+    ? 'Aggregate of ' + aggregate.count + ' entries'
+    : count + ' / ' + sport.total + ' placed';
+  document.getElementById('btn-save').disabled = !aggregate && count < sport.total;
+  document.getElementById('btn-clear').disabled = !aggregate && count === 0;
 
   const [conf1, conf2] = sport.conferences;
   const n = sport.divsPerConf;
@@ -87,11 +92,12 @@ function renderTray() {
       [...div.ids].sort((a, b) => sport.teams[a].name.localeCompare(sport.teams[b].name)).forEach(id => {
         const t = sport.teams[id];
         const chip = document.createElement('div');
-        chip.className = 'tray-chip' + (placed[id] ? ' on-chart' : '');
+        const locked = placed[id] || aggregate;
+        chip.className = 'tray-chip' + (locked ? ' on-chart' : '');
         chip.textContent = t.name;
         chip.style.background = t.bg;
         chip.style.color = t.fg;
-        if (!placed[id]) {
+        if (!locked) {
           chip.addEventListener('mousedown', e => beginDrag(e, id));
           chip.addEventListener('touchstart', e => beginDragTouch(e, id), { passive: true });
         }
@@ -108,10 +114,10 @@ function renderTray() {
 
 // ---- Render chart chips ----
 function renderChips() {
-  chartEl.querySelectorAll('.chip').forEach(el => el.remove());
+  chartEl.querySelectorAll('.chip, .spread').forEach(el => el.remove());
 
   const sport = sports[currentSport];
-  Object.entries(placed).forEach(([id, pos]) => {
+  Object.entries(aggregate ? aggregate.teams : placed).forEach(([id, pos]) => {
     const t = sport.teams[id];
     const chip = document.createElement('div');
     chip.className = 'chip';
@@ -126,13 +132,61 @@ function renderChips() {
 
     const coordEl = document.createElement('span');
     coordEl.className = 'chip-coords';
-    coordEl.textContent = `G:${Math.round(pos.x)}  L:${Math.round(pos.y)}`;
+    coordEl.textContent = aggregate
+      ? `G:${+pos.x.toFixed(1)}  L:${+pos.y.toFixed(1)}`
+      : `G:${Math.round(pos.x)}  L:${Math.round(pos.y)}`;
     chip.appendChild(coordEl);
 
-    chip.addEventListener('mousedown', e => beginDrag(e, id));
-    chip.addEventListener('touchstart', e => beginDrag(e, id), { passive: false });
+    if (aggregate) {
+      const spread = renderSpread(t, pos);
+      chip.classList.add('agg');
+      chip.addEventListener('mouseenter', () => spread.classList.add('active'));
+      chip.addEventListener('mouseleave', () => spread.classList.remove('active'));
+    } else {
+      chip.addEventListener('mousedown', e => beginDrag(e, id));
+      chip.addEventListener('touchstart', e => beginDrag(e, id), { passive: false });
+    }
     chartEl.appendChild(chip);
   });
+}
+
+// Whiskers span the min–max of everyone's entries on each axis; dots show individual entries on hover/tap
+function renderSpread(t, pos) {
+  const left = v => ((v - MIN) / RANGE * 100) + '%';
+  const top  = v => ((1 - (v - MIN) / RANGE) * 100) + '%';
+  const xs = pos.pts.map(p => p.x);
+  const ys = pos.pts.map(p => p.y);
+
+  const spread = document.createElement('div');
+  spread.className = 'spread';
+
+  const h = document.createElement('div');
+  h.className = 'whisker h';
+  h.style.background = t.bg;
+  h.style.left  = left(Math.min(...xs));
+  h.style.width = ((Math.max(...xs) - Math.min(...xs)) / RANGE * 100) + '%';
+  h.style.top   = top(pos.y);
+  spread.appendChild(h);
+
+  const v = document.createElement('div');
+  v.className = 'whisker v';
+  v.style.background = t.bg;
+  v.style.top    = top(Math.max(...ys));
+  v.style.height = ((Math.max(...ys) - Math.min(...ys)) / RANGE * 100) + '%';
+  v.style.left   = left(pos.x);
+  spread.appendChild(v);
+
+  pos.pts.forEach(p => {
+    const dot = document.createElement('div');
+    dot.className = 'entry-dot';
+    dot.style.background = t.bg;
+    dot.style.left = left(p.x);
+    dot.style.top  = top(p.y);
+    spread.appendChild(dot);
+  });
+
+  chartEl.appendChild(spread);
+  return spread;
 }
 
 // ---- Drag ----
@@ -261,21 +315,24 @@ document.addEventListener('touchend', onDragEnd);
 
 // ---- Save / Modal ----
 function buildCSV(rows) {
-  const header = 'Team,Goodness,Likeability';
-  const lines = rows.map(r => `${r.name},${r.x},${r.y}`);
+  const header = 'Team,Goodness,Likeability' + (aggregate ? ',Spread' : '');
+  const lines = rows.map(r => `${r.name},${r.x},${r.y}` + (aggregate ? `,${r.spread}` : ''));
   return [header, ...lines].join('\n');
 }
 
 function openModal() {
   const sport = sports[currentSport];
-  document.querySelector('.modal-header h2').textContent = sport.label + ' Team Rankings';
-  const rows = Object.entries(placed).map(([id, pos]) => ({
+  document.querySelector('.modal-header h2').textContent =
+    sport.label + (aggregate ? ' Aggregate Rankings' : ' Team Rankings');
+  document.getElementById('th-spread').classList.toggle('hidden', !aggregate);
+  const rows = Object.entries(aggregate ? aggregate.teams : placed).map(([id, pos]) => ({
     id,
     name: sport.teams[id].name,
     bg: sport.teams[id].bg,
     fg: sport.teams[id].fg,
-    x: Math.round(pos.x),
-    y: Math.round(pos.y),
+    x: aggregate ? +pos.x.toFixed(1) : Math.round(pos.x),
+    y: aggregate ? +pos.y.toFixed(1) : Math.round(pos.y),
+    spread: aggregate && +pos.spread.toFixed(1),
     _x: pos.x,
     _y: pos.y,
   })).sort((a, b) => b._x - a._x || b._y - a._y);
@@ -288,7 +345,7 @@ function openModal() {
       <td>${i + 1}</td>
       <td><span class="team-swatch" style="background:${r.bg}"></span>${r.name}</td>
       <td>${r.x}</td>
-      <td>${r.y}</td>`;
+      <td>${r.y}</td>` + (aggregate ? `<td>${r.spread}</td>` : '');
     tbody.appendChild(tr);
   });
 
@@ -306,7 +363,7 @@ function openModal() {
     const blob = new Blob([buildCSV(rows)], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'rankings.csv';
+    a.download = aggregate ? 'aggregate.csv' : 'rankings.csv';
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -325,6 +382,7 @@ document.getElementById('modal-bg').addEventListener('click', e => {
 function setSport(key) {
   if (key === currentSport) return;
   currentSport = key;
+  aggregate = null;
   Object.keys(placed).forEach(k => delete placed[k]);
   document.querySelectorAll('.btn-toggle').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.sport === key);
@@ -339,6 +397,7 @@ document.querySelectorAll('.btn-toggle').forEach(btn => {
 });
 
 document.getElementById('btn-clear').addEventListener('click', () => {
+  aggregate = null;
   Object.keys(placed).forEach(k => delete placed[k]);
   renderChips();
   renderTray();
@@ -348,36 +407,65 @@ document.getElementById('btn-load').addEventListener('click', () => {
   document.getElementById('csv-input').click();
 });
 
+function parseCSV(text) {
+  const sport = sports[currentSport];
+  const nameToId = {};
+  Object.entries(sport.teams).forEach(([id, t]) => { nameToId[t.name] = id; });
+
+  const positions = {};
+  text.trim().split('\n').slice(1).forEach(line => {
+    const parts = line.split(',');
+    if (parts.length < 3) return;
+    const name = parts[0].trim();
+    const x = parseFloat(parts[1]);
+    const y = parseFloat(parts[2]);
+    const id = nameToId[name];
+    if (!id || isNaN(x) || isNaN(y)) return;
+    positions[id] = {
+      x: Math.max(MIN, Math.min(MAX, Math.round(x))),
+      y: Math.max(MIN, Math.min(MAX, Math.round(y))),
+    };
+  });
+  return positions;
+}
+
+function median(vals) {
+  const s = [...vals].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+// Teams someone left off are excluded from that team's stats rather than counted as 0.
+// spread = average distance of each entry from the median point.
+function buildAggregate(entries) {
+  const teams = {};
+  Object.keys(sports[currentSport].teams).forEach(id => {
+    const pts = entries.map(e => e[id]).filter(Boolean);
+    if (!pts.length) return;
+    const x = median(pts.map(p => p.x));
+    const y = median(pts.map(p => p.y));
+    const spread = pts.reduce((sum, p) => sum + Math.hypot(p.x - x, p.y - y), 0) / pts.length;
+    teams[id] = { x, y, pts, spread };
+  });
+  return { count: entries.length, teams };
+}
+
 document.getElementById('csv-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const sport = sports[currentSport];
-    const nameToId = {};
-    Object.entries(sport.teams).forEach(([id, t]) => { nameToId[t.name] = id; });
-
+  const files = [...e.target.files];
+  if (!files.length) return;
+  Promise.all(files.map(f => f.text())).then(texts => {
+    const entries = texts.map(parseCSV);
     Object.keys(placed).forEach(k => delete placed[k]);
-
-    ev.target.result.trim().split('\n').slice(1).forEach(line => {
-      const parts = line.split(',');
-      if (parts.length < 3) return;
-      const name = parts[0].trim();
-      const x = parseFloat(parts[1]);
-      const y = parseFloat(parts[2]);
-      const id = nameToId[name];
-      if (!id || isNaN(x) || isNaN(y)) return;
-      placed[id] = {
-        x: Math.max(MIN, Math.min(MAX, Math.round(x))),
-        y: Math.max(MIN, Math.min(MAX, Math.round(y))),
-      };
-    });
-
+    if (entries.length === 1) {
+      aggregate = null;
+      Object.assign(placed, entries[0]);
+    } else {
+      aggregate = buildAggregate(entries);
+    }
     renderChips();
     renderTray();
     e.target.value = '';
-  };
-  reader.readAsText(file);
+  });
 });
 
 // ---- Init ----
