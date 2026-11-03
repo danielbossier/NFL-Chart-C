@@ -274,7 +274,6 @@ function startDrag(id, x, y) {
 
   if (placed[id]) {
     delete placed[id];
-    renderChips();
     renderTray();
   }
 
@@ -286,6 +285,9 @@ function beginDrag(e, id) {
   e.preventDefault();
   e.stopPropagation();
   const { x, y } = clientXY(e);
+  // Hide rather than remove a chart chip: touch events stay targeted at the element the touch began on,
+  // and a detached element never bubbles touchend to the document listener.
+  if (placed[id]) e.currentTarget.style.visibility = 'hidden';
   startDrag(id, x, y);
 }
 
@@ -365,6 +367,7 @@ function onDragEnd(e) {
 document.addEventListener('mousemove', onDragMove);
 document.addEventListener('mouseup', onDragEnd);
 document.addEventListener('touchend', onDragEnd);
+document.addEventListener('touchcancel', onDragEnd);
 
 // ---- Save / Modal ----
 function buildCSV(rows) {
