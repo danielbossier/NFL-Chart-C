@@ -5,8 +5,17 @@ let currentSport = 'nfl';
 // placed[teamId] = { x: -10–10, y: -10–10 }
 const placed = {};
 
-// aggregate = { count, teams: { [teamId]: { x, y, pts: [{ x, y }], spread } } } while viewing combined entries
+// aggregate = { count, teams: { [teamId]: { x, y, pts: [{ x, y }], spread } }, label, short, history } while viewing
+// combined entries. teams/count describe the latest week; history holds every loaded week, oldest first.
 let aggregate = null;
+
+function inSeason() {
+  return aggregate && aggregate.history.length > 1;
+}
+
+const pctX = v => ((v - MIN) / RANGE * 100) + '%';
+const pctY = v => ((1 - (v - MIN) / RANGE) * 100) + '%';
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 const chartEl = document.getElementById('chart');
 const trayEl  = document.getElementById('tray');
@@ -61,7 +70,9 @@ function renderTray() {
   trayEl.innerHTML = '';
   const sport = sports[currentSport];
   const count = Object.keys(placed).length;
-  document.getElementById('tray-count').textContent = aggregate
+  document.getElementById('tray-count').textContent = inSeason()
+    ? aggregate.history.length + ' weeks · latest: ' + aggregate.label
+    : aggregate
     ? 'Aggregate of ' + aggregate.count + ' entries'
     : count + ' / ' + sport.total + ' placed';
   document.getElementById('btn-save').disabled = !aggregate && count < sport.total;
@@ -138,7 +149,7 @@ function renderChips() {
     chip.appendChild(coordEl);
 
     if (aggregate) {
-      const spread = renderSpread(t, pos);
+      const spread = renderSpread(t, id, pos);
       chip.classList.add('agg');
       chip.addEventListener('mouseenter', () => {
         chip.classList.add('active');
@@ -158,45 +169,77 @@ function renderChips() {
   });
 }
 
-// Halo radius = spread in chart units; each person's entry (dot tethered to the mean chip) shows on hover/tap
-function renderSpread(t, pos) {
-  const left = v => ((v - MIN) / RANGE * 100) + '%';
-  const top  = v => ((1 - (v - MIN) / RANGE) * 100) + '%';
-
+// Halo radius = spread in chart units. On hover/tap: a season shows the team's trail through each week;
+// a single week shows each person's entry as a dot tethered to the mean chip.
+function renderSpread(t, id, pos) {
   const spread = document.createElement('div');
   spread.className = 'spread';
 
   // Chart is square, so a % of its width is the same length in either direction
   const halo = document.createElement('div');
   halo.className = 'halo';
-  halo.style.left   = left(pos.x);
-  halo.style.top    = top(pos.y);
+  halo.style.left   = pctX(pos.x);
+  halo.style.top    = pctY(pos.y);
   halo.style.width  = (pos.spread * 2 / RANGE * 100) + '%';
   halo.style.height = halo.style.width;
   spread.appendChild(halo);
 
-  pos.pts.forEach(p => {
-    const dx = p.x - pos.x;
-    const dy = p.y - pos.y;
-    const tether = document.createElement('div');
-    tether.className = 'tether';
-    tether.style.background = t.bg;
-    tether.style.left  = left(pos.x);
-    tether.style.top   = top(pos.y);
-    tether.style.width = (Math.hypot(dx, dy) / RANGE * 100) + '%';
-    tether.style.transform = `rotate(${Math.atan2(-dy, dx)}rad)`;
-    spread.appendChild(tether);
+  if (inSeason()) {
+    renderTrail(spread, t, id);
+  } else {
+    pos.pts.forEach(p => {
+      const dx = p.x - pos.x;
+      const dy = p.y - pos.y;
+      const tether = document.createElement('div');
+      tether.className = 'tether';
+      tether.style.background = t.bg;
+      tether.style.left  = pctX(pos.x);
+      tether.style.top   = pctY(pos.y);
+      tether.style.width = (Math.hypot(dx, dy) / RANGE * 100) + '%';
+      tether.style.transform = `rotate(${Math.atan2(-dy, dx)}rad)`;
+      spread.appendChild(tether);
 
-    const dot = document.createElement('div');
-    dot.className = 'entry-dot';
-    dot.style.background = t.bg;
-    dot.style.left = left(p.x);
-    dot.style.top  = top(p.y);
-    spread.appendChild(dot);
-  });
+      const dot = document.createElement('div');
+      dot.className = 'entry-dot';
+      dot.style.background = t.bg;
+      dot.style.left = pctX(p.x);
+      dot.style.top  = pctY(p.y);
+      spread.appendChild(dot);
+    });
+  }
 
   chartEl.appendChild(spread);
   return spread;
+}
+
+function renderTrail(spread, t, id) {
+  const stops = aggregate.history.filter(w => w.teams[id]).map(w => ({ ...w.teams[id], short: w.short }));
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'trail');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  const points = stops.map(s => parseFloat(pctX(s.x)) + ',' + parseFloat(pctY(s.y))).join(' ');
+  ['trail-under', 'trail-line'].forEach(cls => {
+    const line = document.createElementNS(SVG_NS, 'polyline');
+    line.setAttribute('class', cls);
+    line.setAttribute('points', points);
+    if (cls === 'trail-line') line.setAttribute('stroke', t.bg);
+    svg.appendChild(line);
+  });
+  spread.appendChild(svg);
+
+  stops.slice(0, -1).forEach(s => {
+    const dot = document.createElement('div');
+    dot.className = 'week-dot';
+    dot.style.background = t.bg;
+    dot.style.left = pctX(s.x);
+    dot.style.top  = pctY(s.y);
+    const label = document.createElement('span');
+    label.textContent = s.short;
+    dot.appendChild(label);
+    spread.appendChild(dot);
+  });
 }
 
 // ---- Drag ----
@@ -325,27 +368,37 @@ document.addEventListener('touchend', onDragEnd);
 
 // ---- Save / Modal ----
 function buildCSV(rows) {
-  const header = 'Team,Goodness,Likeability' + (aggregate ? ',Spread' : '');
-  const lines = rows.map(r => `${r.name},${r.x},${r.y}` + (aggregate ? `,${r.spread}` : ''));
+  const header = 'Team,Goodness,Likeability' + (aggregate ? ',Spread' : '') +
+    (inSeason() ? ',Change Goodness,Change Likeability' : '');
+  const lines = rows.map(r => `${r.name},${r.x},${r.y}` + (aggregate ? `,${r.spread}` : '') +
+    (inSeason() ? `,${r.dx},${r.dy}` : ''));
   return [header, ...lines].join('\n');
 }
 
 function openModal() {
   const sport = sports[currentSport];
-  document.querySelector('.modal-header h2').textContent =
-    sport.label + (aggregate ? ' Aggregate Rankings' : ' Team Rankings');
+  const season = inSeason();
+  const signed = v => (v > 0 ? '+' : '') + +v.toFixed(1);
+  document.querySelector('.modal-header h2').textContent = sport.label +
+    (season ? ' Rankings · ' + aggregate.label : aggregate ? ' Aggregate Rankings' : ' Team Rankings');
   document.getElementById('th-spread').classList.toggle('hidden', !aggregate);
-  const rows = Object.entries(aggregate ? aggregate.teams : placed).map(([id, pos]) => ({
-    id,
-    name: sport.teams[id].name,
-    bg: sport.teams[id].bg,
-    fg: sport.teams[id].fg,
-    x: aggregate ? +pos.x.toFixed(1) : Math.round(pos.x),
-    y: aggregate ? +pos.y.toFixed(1) : Math.round(pos.y),
-    spread: aggregate && +pos.spread.toFixed(1),
-    _x: pos.x,
-    _y: pos.y,
-  })).sort((a, b) => b._x - a._x || b._y - a._y);
+  document.querySelectorAll('.th-change').forEach(th => th.classList.toggle('hidden', !season));
+  const rows = Object.entries(aggregate ? aggregate.teams : placed).map(([id, pos]) => {
+    const first = season && aggregate.history.find(w => w.teams[id]).teams[id];
+    return {
+      id,
+      name: sport.teams[id].name,
+      bg: sport.teams[id].bg,
+      fg: sport.teams[id].fg,
+      x: aggregate ? +pos.x.toFixed(1) : Math.round(pos.x),
+      y: aggregate ? +pos.y.toFixed(1) : Math.round(pos.y),
+      spread: aggregate && +pos.spread.toFixed(1),
+      dx: season && signed(pos.x - first.x),
+      dy: season && signed(pos.y - first.y),
+      _x: pos.x,
+      _y: pos.y,
+    };
+  }).sort((a, b) => b._x - a._x || b._y - a._y);
 
   const tbody = document.getElementById('modal-tbody');
   tbody.innerHTML = '';
@@ -355,7 +408,8 @@ function openModal() {
       <td>${i + 1}</td>
       <td><span class="team-swatch" style="background:${r.bg}"></span>${r.name}</td>
       <td>${r.x}</td>
-      <td>${r.y}</td>` + (aggregate ? `<td>${r.spread}</td>` : '');
+      <td>${r.y}</td>` + (aggregate ? `<td>${r.spread}</td>` : '') +
+      (season ? `<td>${r.dx}</td><td>${r.dy}</td>` : '');
     tbody.appendChild(tr);
   });
 
@@ -373,7 +427,9 @@ function openModal() {
     const blob = new Blob([buildCSV(rows)], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = aggregate ? 'aggregate.csv' : 'rankings.csv';
+    const d = new Date();
+    const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    a.download = currentSport + '-' + stamp + (aggregate ? '-aggregate' : '') + '.csv';
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -454,17 +510,43 @@ function buildAggregate(entries) {
   return { count: entries.length, teams };
 }
 
+// Week comes from the filename: a YYYY-MM-DD date (grouped into Tuesday–Monday weeks), else the first number.
+// Browser duplicate suffixes like "(1)" are ignored.
+function weekOf(filename) {
+  const name = filename.replace(/\(\d+\)/g, '');
+  const d = name.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (d) {
+    const start = new Date(d[1], d[2] - 1, d[3]);
+    start.setDate(start.getDate() - (start.getDay() + 5) % 7);
+    const short = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return { key: start.getTime(), label: 'Week of ' + short, short };
+  }
+  const n = name.match(/\d+/);
+  if (n) return { key: +n[0], label: 'Week ' + +n[0], short: 'Wk ' + +n[0] };
+  return { key: -Infinity, label: 'Undated', short: 'Undated' };
+}
+
 document.getElementById('csv-input').addEventListener('change', e => {
   const files = [...e.target.files];
   if (!files.length) return;
   Promise.all(files.map(f => f.text())).then(texts => {
-    const entries = texts.map(parseCSV);
+    const sportKey = Object.keys(sports).find(k => files[0].name.toLowerCase().includes(k));
+    if (sportKey) setSport(sportKey);
+
+    const groups = {};
+    files.forEach((f, i) => {
+      const w = weekOf(f.name);
+      (groups[w.key] = groups[w.key] || { ...w, entries: [] }).entries.push(parseCSV(texts[i]));
+    });
+
     Object.keys(placed).forEach(k => delete placed[k]);
-    if (entries.length === 1) {
+    if (files.length === 1) {
       aggregate = null;
-      Object.assign(placed, entries[0]);
+      Object.assign(placed, Object.values(groups)[0].entries[0]);
     } else {
-      aggregate = buildAggregate(entries);
+      const history = Object.values(groups).sort((a, b) => a.key - b.key)
+        .map(w => ({ label: w.label, short: w.short, ...buildAggregate(w.entries) }));
+      aggregate = { ...history[history.length - 1], history };
     }
     renderChips();
     renderTray();

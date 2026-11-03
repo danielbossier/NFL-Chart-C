@@ -19,7 +19,7 @@ Four files — no build step, no dependencies:
 - `sports` — object keyed by sport (`nfl`, `mlb`, `nba`), each containing `teams`, `divisions`, `conferences`, `total`, and `divsPerConf`
 - `placed` — flat object keyed by team ID storing `{ x, y }` positions for chips currently on the chart
 - `currentSport` — string tracking the active sport
-- `aggregate` — `null`, or `{ count, teams }` while viewing combined entries from several loaded CSVs; each team stores mean `x`/`y`, raw `pts`, and `spread` (standard deviation of entries around the mean point). The chart is read-only in this mode.
+- `aggregate` — `null`, or `{ count, teams, label, short, history }` while viewing several loaded CSVs. Files are grouped into weeks by filename (`weekOf()`); `history` holds each week's aggregate oldest-first, and `teams`/`count` describe the latest week. Each team stores mean `x`/`y`, raw `pts`, and `spread` (standard deviation of entries around the mean point). With more than one week (`inSeason()`), the chart shows each team's trail and the table adds change columns. The chart is read-only in this mode.
 
 **Key functions:**
 - `initChart()` — builds static chart decorations (gridlines, axis labels, quadrant labels)
@@ -35,7 +35,9 @@ Four files — no build step, no dependencies:
 - `openModal()` — builds and shows the rankings table sorted by Goodness then Likeability (adds a Spread column in aggregate mode)
 - `parseCSV(text)` — parses an exported CSV into `{ teamId: { x, y } }` for the current sport
 - `buildAggregate(entries)` — combines several parsed CSVs into the `aggregate` shape
-- `renderSpread(t, pos)` — draws a halo ring (radius = `spread`) behind the team's mean chip, plus each person's entry as a dot tethered to the chip; dots show only on chip hover/tap, which also dims every other team
+- `renderSpread(t, id, pos)` — draws a halo ring (radius = `spread`) behind the team's mean chip; for a single week, adds each person's entry as a dot tethered to the chip (shown on hover/tap, which also dims every other team)
+- `renderTrail(spread, t, id)` — in season view, draws the team's path through each week (faint by default, full with week labels on hover/tap)
+- `weekOf(filename)` — reads the week from a filename: a `YYYY-MM-DD` date grouped into Tuesday–Monday weeks, else the first number. Downloads are named `<sport>-<YYYY-MM-DD>.csv`, and loading picks the sport from the first filename.
 
 **Coordinate system:** chart values run from -10 to +10 on both axes. Pixel position converts to/from this range via `(v - MIN) / RANGE * 100 + '%'`.
 
