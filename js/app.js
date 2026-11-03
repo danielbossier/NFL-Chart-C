@@ -140,8 +140,16 @@ function renderChips() {
     if (aggregate) {
       const spread = renderSpread(t, pos);
       chip.classList.add('agg');
-      chip.addEventListener('mouseenter', () => spread.classList.add('active'));
-      chip.addEventListener('mouseleave', () => spread.classList.remove('active'));
+      chip.addEventListener('mouseenter', () => {
+        chip.classList.add('active');
+        spread.classList.add('active');
+        chartEl.classList.add('focusing');
+      });
+      chip.addEventListener('mouseleave', () => {
+        chip.classList.remove('active');
+        spread.classList.remove('active');
+        chartEl.classList.remove('focusing');
+      });
     } else {
       chip.addEventListener('mousedown', e => beginDrag(e, id));
       chip.addEventListener('touchstart', e => beginDrag(e, id), { passive: false });
@@ -150,7 +158,7 @@ function renderChips() {
   });
 }
 
-// One faint dot per person's entry, tethered to the team's median chip; brightened on hover/tap
+// Halo radius = spread in chart units; each person's entry (dot tethered to the median chip) shows on hover/tap
 function renderSpread(t, pos) {
   const left = v => ((v - MIN) / RANGE * 100) + '%';
   const top  = v => ((1 - (v - MIN) / RANGE) * 100) + '%';
@@ -158,10 +166,18 @@ function renderSpread(t, pos) {
   const spread = document.createElement('div');
   spread.className = 'spread';
 
+  // Chart is square, so a % of its width is the same length in either direction
+  const halo = document.createElement('div');
+  halo.className = 'halo';
+  halo.style.left   = left(pos.x);
+  halo.style.top    = top(pos.y);
+  halo.style.width  = (pos.spread * 2 / RANGE * 100) + '%';
+  halo.style.height = halo.style.width;
+  spread.appendChild(halo);
+
   pos.pts.forEach(p => {
     const dx = p.x - pos.x;
     const dy = p.y - pos.y;
-    // Chart is square, so a % of its width is the same length in either direction
     const tether = document.createElement('div');
     tether.className = 'tether';
     tether.style.background = t.bg;

@@ -35,7 +35,7 @@ Four files — no build step, no dependencies:
 - `openModal()` — builds and shows the rankings table sorted by Goodness then Likeability (adds a Spread column in aggregate mode)
 - `parseCSV(text)` — parses an exported CSV into `{ teamId: { x, y } }` for the current sport
 - `buildAggregate(entries)` — combines several parsed CSVs into the `aggregate` shape
-- `renderSpread(t, pos)` — draws a faint dot for each person's entry, tethered to the team's median chip; brightened on chip hover/tap
+- `renderSpread(t, pos)` — draws a halo ring (radius = `spread`) behind the team's median chip, plus each person's entry as a dot tethered to the chip; dots show only on chip hover/tap, which also dims every other team
 
 **Coordinate system:** chart values run from -10 to +10 on both axes. Pixel position converts to/from this range via `(v - MIN) / RANGE * 100 + '%'`.
 

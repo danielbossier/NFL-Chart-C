@@ -95,7 +95,7 @@ header span { font-size: 0.8rem; color: #8b949e; }
   white-space: nowrap;
   border: 1px solid rgba(255,255,255,0.18);
   z-index: 5;
-  transition: box-shadow 0.1s, border-color 0.1s;
+  transition: box-shadow 0.1s, border-color 0.1s, opacity 0.15s;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -121,10 +121,24 @@ header span { font-size: 0.8rem; color: #8b949e; }
   inset: 0;
   pointer-events: none;
   z-index: 2;
-  opacity: 0.3;
   transition: opacity 0.15s;
 }
-.spread.active { z-index: 15; opacity: 1; }
+.spread.active { z-index: 15; }
+.halo {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255,255,255,0.05);
+  border: 1px dashed rgba(255,255,255,0.3);
+}
+.spread.active .halo {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.6);
+}
+.tether, .entry-dot { display: none; }
+.spread.active .tether, .spread.active .entry-dot { display: block; }
+#chart.focusing .chip.agg:not(.active),
+#chart.focusing .spread:not(.active) { opacity: 0.15; }
 .tether {
   position: absolute;
   height: 2px;
