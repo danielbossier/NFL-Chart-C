@@ -150,33 +150,27 @@ function renderChips() {
   });
 }
 
-// Whiskers span the min–max of everyone's entries on each axis; dots show individual entries on hover/tap
+// One faint dot per person's entry, tethered to the team's median chip; brightened on hover/tap
 function renderSpread(t, pos) {
   const left = v => ((v - MIN) / RANGE * 100) + '%';
   const top  = v => ((1 - (v - MIN) / RANGE) * 100) + '%';
-  const xs = pos.pts.map(p => p.x);
-  const ys = pos.pts.map(p => p.y);
 
   const spread = document.createElement('div');
   spread.className = 'spread';
 
-  const h = document.createElement('div');
-  h.className = 'whisker h';
-  h.style.background = t.bg;
-  h.style.left  = left(Math.min(...xs));
-  h.style.width = ((Math.max(...xs) - Math.min(...xs)) / RANGE * 100) + '%';
-  h.style.top   = top(pos.y);
-  spread.appendChild(h);
-
-  const v = document.createElement('div');
-  v.className = 'whisker v';
-  v.style.background = t.bg;
-  v.style.top    = top(Math.max(...ys));
-  v.style.height = ((Math.max(...ys) - Math.min(...ys)) / RANGE * 100) + '%';
-  v.style.left   = left(pos.x);
-  spread.appendChild(v);
-
   pos.pts.forEach(p => {
+    const dx = p.x - pos.x;
+    const dy = p.y - pos.y;
+    // Chart is square, so a % of its width is the same length in either direction
+    const tether = document.createElement('div');
+    tether.className = 'tether';
+    tether.style.background = t.bg;
+    tether.style.left  = left(pos.x);
+    tether.style.top   = top(pos.y);
+    tether.style.width = (Math.hypot(dx, dy) / RANGE * 100) + '%';
+    tether.style.transform = `rotate(${Math.atan2(-dy, dx)}rad)`;
+    spread.appendChild(tether);
+
     const dot = document.createElement('div');
     dot.className = 'entry-dot';
     dot.style.background = t.bg;
