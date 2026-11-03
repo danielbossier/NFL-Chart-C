@@ -158,7 +158,7 @@ function renderChips() {
   });
 }
 
-// Halo radius = spread in chart units; each person's entry (dot tethered to the median chip) shows on hover/tap
+// Halo radius = spread in chart units; each person's entry (dot tethered to the mean chip) shows on hover/tap
 function renderSpread(t, pos) {
   const left = v => ((v - MIN) / RANGE * 100) + '%';
   const top  = v => ((1 - (v - MIN) / RANGE) * 100) + '%';
@@ -439,22 +439,16 @@ function parseCSV(text) {
   return positions;
 }
 
-function median(vals) {
-  const s = [...vals].sort((a, b) => a - b);
-  const m = s.length >> 1;
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-}
-
 // Teams someone left off are excluded from that team's stats rather than counted as 0.
-// spread = average distance of each entry from the median point.
+// spread = standard deviation of entries around the mean point (root-mean-square distance).
 function buildAggregate(entries) {
   const teams = {};
   Object.keys(sports[currentSport].teams).forEach(id => {
     const pts = entries.map(e => e[id]).filter(Boolean);
     if (!pts.length) return;
-    const x = median(pts.map(p => p.x));
-    const y = median(pts.map(p => p.y));
-    const spread = pts.reduce((sum, p) => sum + Math.hypot(p.x - x, p.y - y), 0) / pts.length;
+    const x = pts.reduce((sum, p) => sum + p.x, 0) / pts.length;
+    const y = pts.reduce((sum, p) => sum + p.y, 0) / pts.length;
+    const spread = Math.sqrt(pts.reduce((sum, p) => sum + (p.x - x) ** 2 + (p.y - y) ** 2, 0) / pts.length);
     teams[id] = { x, y, pts, spread };
   });
   return { count: entries.length, teams };

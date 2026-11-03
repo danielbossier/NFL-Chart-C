@@ -19,7 +19,7 @@ Four files — no build step, no dependencies:
 - `sports` — object keyed by sport (`nfl`, `mlb`, `nba`), each containing `teams`, `divisions`, `conferences`, `total`, and `divsPerConf`
 - `placed` — flat object keyed by team ID storing `{ x, y }` positions for chips currently on the chart
 - `currentSport` — string tracking the active sport
-- `aggregate` — `null`, or `{ count, teams }` while viewing combined entries from several loaded CSVs; each team stores median `x`/`y`, raw `pts`, and `spread` (mean distance of entries from the median). The chart is read-only in this mode.
+- `aggregate` — `null`, or `{ count, teams }` while viewing combined entries from several loaded CSVs; each team stores mean `x`/`y`, raw `pts`, and `spread` (standard deviation of entries around the mean point). The chart is read-only in this mode.
 
 **Key functions:**
 - `initChart()` — builds static chart decorations (gridlines, axis labels, quadrant labels)
@@ -35,7 +35,7 @@ Four files — no build step, no dependencies:
 - `openModal()` — builds and shows the rankings table sorted by Goodness then Likeability (adds a Spread column in aggregate mode)
 - `parseCSV(text)` — parses an exported CSV into `{ teamId: { x, y } }` for the current sport
 - `buildAggregate(entries)` — combines several parsed CSVs into the `aggregate` shape
-- `renderSpread(t, pos)` — draws a halo ring (radius = `spread`) behind the team's median chip, plus each person's entry as a dot tethered to the chip; dots show only on chip hover/tap, which also dims every other team
+- `renderSpread(t, pos)` — draws a halo ring (radius = `spread`) behind the team's mean chip, plus each person's entry as a dot tethered to the chip; dots show only on chip hover/tap, which also dims every other team
 
 **Coordinate system:** chart values run from -10 to +10 on both axes. Pixel position converts to/from this range via `(v - MIN) / RANGE * 100 + '%'`.
 
